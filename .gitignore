@@ -16,8 +16,8 @@ next-env.d.ts
 .env.*
 !.env.example
 
-# uploads — runtime files on the Railway volume (MEDIA_DIR), not repo assets.
-/media
+# NB: /media is intentionally NOT ignored — photos are public site assets and
+# ship with the repo. They serve from ./media on every deploy (no volume needed).
 
 # stray local SQLite (only if someone runs the old adapter) — never commit.
 payload.db

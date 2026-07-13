@@ -8,6 +8,10 @@ SQLite-bestand. Het model:
   z'n eigen Postgres.
 - **Lokaal** verbind je met de **dev-Postgres** → iedereen in het team werkt op
   dezelfde dev-data. Wat je lokaal invoert staat meteen voor de rest klaar.
+- **Media** = de `./media`-map in de repo (gewoon meegecommit) shipt met elke
+  deploy. Wil je dat editors óók in de admin foto's uploaden en die blijven
+  staan, dan zet je een **volume** op `/data/media` (`MEDIA_DIR`) — anders zijn
+  prod-uploads na een redeploy weg.
 - **Livegaan** = `dev` → `production` promoten (of prod los vullen). Geen
   dubbel werk.
 
@@ -93,17 +97,25 @@ dus prod krijgt het schema automatisch.
 | `PAYLOAD_SECRET` | unieke secret (`node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`) |
 | `MEDIA_DIR` | `/data/media` (het gemounte volume) |
 
-## Media
+## Media (en waarom de database los staat)
 
-Uploads gaan naar het volume onder `MEDIA_DIR`. Let op: een volume hangt **per
-environment** (en per instance). Een afbeelding die je lokaal upload landt op je
-eigen schijf; de dev-DB-rij verwijst ernaar maar een teamlid ziet 'm pas als het
-bestand er ook staat.
+Twee dingen die vaak door elkaar lopen:
 
-- **Enkele prod-instance, weinig uploads** → volume is prima.
-- **Team-brede media-sync** → zet een S3-compatible store bij
-  (`@payloadcms/storage-s3` → Railway bucket / Cloudflare R2). Dan lopen ook de
-  bestanden synchroon met de gedeelde database.
+- **Tekst / content** (pagina's, velden, relaties) → de **Postgres-service**. Die
+  heeft z'n eigen persistente opslag; content-wijzigingen in de admin overleven
+  elke redeploy **zonder** volume. De database is dus niet een bestand op een
+  volume — het is de losse Postgres-service.
+- **Afbeeldingen** → bestanden op schijf. Twee manieren:
+  1. **In de repo** (`./media`, meegecommit) — de baseline. Foto's die devs
+     toevoegen shippen met de deploy. Simpel, geen volume nodig.
+  2. **Op een volume** (`MEDIA_DIR=/data/media` + volume op `/data`) — nodig als
+     **editors in de productie-admin** uploaden en die moeten blijven staan.
+     Zonder volume liggen die uploads op Railway's tijdelijke schijf en zijn ze
+     na de volgende redeploy weg.
+
+De template zet het volume standaard klaar (stap 5), zodat admin-uploads meteen
+persistent zijn. Upload je alleen als dev via de repo, dan kun je het volume
+weglaten.
 
 ## Bij latere wijzigingen
 
