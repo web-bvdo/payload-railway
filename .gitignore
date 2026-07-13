@@ -16,12 +16,14 @@ next-env.d.ts
 .env.*
 !.env.example
 
-# database (per-site, generated locally)
+# database (per-site, generated locally) — never commit: it holds the users
+# table (admin emails + password hashes). Content goes in seed/content.json.
 payload.db
 payload.db-*
 
-# uploaded media (per-site client content)
-/media
+# NB: /media is intentionally NOT ignored — uploads are public site assets and
+# ship with the repo (see docs/DEPLOY-RAILWAY.md). If you host media on a volume
+# instead, add /media back here.
 
 # misc
 .DS_Store

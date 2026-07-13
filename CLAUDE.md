@@ -73,6 +73,7 @@ docs/
 | `npm run dev` | dev-server, site op `:3000`, admin op `/admin` |
 | `npm run new:page` | nieuwe bewerkbare pagina toevoegen (interactieve wizard) |
 | `npm run migrate:content` | lokale dev-content + media éénmalig naar productie (Turso + Blob) zetten — zie [docs/DEPLOY-VERCEL.md](docs/DEPLOY-VERCEL.md) |
+| `npm run export:seed` | content (zonder users-tabel) exporteren naar `seed/content.json` voor de Railway-deploy — zie [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) |
 | `npm run generate:types` | Payload-types opnieuw genereren (na content-wijziging) |
 | `npm run generate:importmap` | admin import-map herbouwen (na UI-plugin-wijziging) |
 | `npm run typecheck` | `tsc --noEmit` |
