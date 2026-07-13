@@ -14,7 +14,7 @@ Content is **field-level, ACF-style** (like WordPress ACF): you define named fie
 pull them into hand-built pages by key with `getContent(...)`. It is **not** a block /
 page-builder — that was deliberately removed. Do not reintroduce one.
 
-Stack: Next.js 15 (App Router) · Payload CMS 3 · SQLite (dev) · React 19 · TypeScript.
+Stack: Next.js 15 (App Router) · Payload CMS 3 · Postgres (Railway) · React 19 · TypeScript.
 
 ## Golden rules
 
@@ -30,7 +30,9 @@ Stack: Next.js 15 (App Router) · Payload CMS 3 · SQLite (dev) · React 19 · T
 5. **Never reintroduce a block/page-builder.** Keep the field-level model.
 6. **Tailwind only in `(frontend)`.** Never `@import 'tailwindcss'` in `(payload)` — it
    would break the admin UI.
-7. **Never commit** `.env`, `payload.db*`, or `/media`. They are per-site and gitignored.
+7. **Never commit** `.env` or `/media`. Secrets and runtime uploads are per-site
+   and gitignored. The database is a Railway Postgres service — nothing DB-related
+   lives in the repo except `src/migrations/`.
 8. **Respect the core / site-specific split** (see below) so template updates merge cleanly.
 
 ## Architecture
@@ -48,7 +50,7 @@ src/
   collections/
     Media.ts              ← image/file uploads
     Users.ts              ← admin logins
-  payload.config.ts       ← Payload config (SQLite adapter, globals, admin)
+  payload.config.ts       ← Payload config (Postgres adapter, globals, admin)
 scripts/
   setup.mjs               ← `npm run setup` — creates .env with a fresh secret
   seed.ts                 ← `npm run seed` — first admin user + home content
@@ -56,8 +58,7 @@ scripts/
 docs/
   content-fields.md       ← how to add pages & fields (the detailed guide)
   MAINTAINING.md          ← running this across many client sites + bug-fix flow
-  DEPLOY-RAILWAY.md       ← production deploy (SQLite + volume) — the simple default
-  DEPLOY-VERCEL.md        ← production deploy on serverless (Turso DB + Vercel Blob)
+  DEPLOY-RAILWAY.md       ← production deploy (Postgres service + dev/prod envs)
 ```
 
 **How content flows:** `src/content/<slug>.ts` (fields) → registered in `globals.ts` →
@@ -72,8 +73,7 @@ docs/
 | `npm run seed` | eerste admin-gebruiker (uit env) + home-content |
 | `npm run dev` | dev-server, site op `:3000`, admin op `/admin` |
 | `npm run new:page` | nieuwe bewerkbare pagina toevoegen (interactieve wizard) |
-| `npm run migrate:content` | lokale dev-content + media éénmalig naar productie (Turso + Blob) zetten — zie [docs/DEPLOY-VERCEL.md](docs/DEPLOY-VERCEL.md) |
-| `npm run export:seed` | content (zonder users-tabel) exporteren naar `seed/content.json` voor de Railway-deploy — zie [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) |
+| `npm run migrate:create` | migratie genereren tegen het Postgres-schema (na content-veld-wijziging) — zie [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) |
 | `npm run generate:types` | Payload-types opnieuw genereren (na content-wijziging) |
 | `npm run generate:importmap` | admin import-map herbouwen (na UI-plugin-wijziging) |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -105,14 +105,14 @@ Full field-type reference with examples: [docs/content-fields.md](docs/content-f
 
 - **New global not showing / `getContent('x')` errors** → not registered in `globals.ts`,
   or `generate:types` not run.
-- **Restart `npm run dev` after adding a global** — SQLite auto-creates the new table on
-  boot; a running server won't have it yet.
-- **Deleting or renaming a global in dev** can confuse SQLite auto-push (it guesses a table
-  "rename" and blocks). Fix: stop dev, delete `payload.db`, restart.
-- **"You're about to delete … table / DATA LOSS WARNING" prompt on `npm run dev`** → the
-  code no longer matches the database (usually code was reset/changed while the DB still has
-  the old content). Press **N**, restore matching code (`git reflog` → `git reset --hard
-  <your-commit>`), restart. Never blindly press `y` — it deletes content permanently.
+- **Restart `npm run dev` after adding a global** — the Postgres adapter pushes the new
+  table to the dev DB on boot; a running server won't have it yet.
+- **You're on the shared dev DB.** `npm run dev` reads/writes the Railway dev Postgres
+  (`DATABASE_URI`), not a local file. Schema changes you push are visible to the whole team
+  immediately; be deliberate about renaming/removing fields.
+- **"You're about to delete … column / DATA LOSS WARNING" prompt on `npm run dev`** → your
+  code dropped/renamed a field the dev DB still has. Press **N** unless you truly mean to lose
+  that column's data for everyone. Never blindly press `y`.
 - **Never `git reset --hard` a customized client site** onto the template — it wipes the
   site's work. Use `merge`/`cherry-pick`. See [docs/MAINTAINING.md](docs/MAINTAINING.md).
 - **Image renders empty** → field not filled in `/admin`, or missing `relationTo: 'media'`.
