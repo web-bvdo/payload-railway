@@ -1,0 +1,36 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# env (secrets — never commit). Ignore every .env* except the example.
+.env
+.env.*
+!.env.example
+
+# database (per-site, generated locally)
+payload.db
+payload.db-*
+
+# uploaded media (per-site client content)
+/media
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# editors
+/.idea/*
+!/.idea/runConfigurations
+
+# vercel
+.vercel
