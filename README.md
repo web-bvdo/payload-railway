@@ -92,8 +92,9 @@ Full guide with examples: **[docs/content-fields.md](docs/content-fields.md)**.
 3. **[docs/content-fields.md](docs/content-fields.md)** — add pages & fields (with examples).
 4. **[docs/CONTENT.md](docs/CONTENT.md)** — content model + promoting content staging → prod.
 5. **[docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md)** — the Railway setup (Postgres + Bucket + vars) and deploys.
-6. **[docs/MAINTAINING.md](docs/MAINTAINING.md)** — many client sites + pushing template fixes to them.
-7. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
+6. **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — concrete build/deploy failures and their fixes.
+7. **[docs/MAINTAINING.md](docs/MAINTAINING.md)** — many client sites + pushing template fixes to them.
+8. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
 
 ## Stack
 

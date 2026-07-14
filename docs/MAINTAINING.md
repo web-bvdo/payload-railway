@@ -59,6 +59,24 @@ localization, veel eigen pagina's), doe dan **geen** volledige merge — dat gee
 conflicten. Pas alleen de losse infra-wijziging met de hand toe (of cherry-pick die ene
 commit). De upstream-merge is voor sites die dicht bij de template blijven.
 
+### Een verse kopie in één keer gelijktrekken
+
+Heeft de klant-repo nog **geen eigen werk** (net gemaakt met `Use this template`)? Dan trek
+je 'm zo naar de laatste template-staat, zonder per commit te cherry-picken:
+
+```bash
+git clone https://github.com/<org>/<klant-repo>.git && cd <klant-repo>   # altijd VERS clonen
+git remote add template https://github.com/web-bvdo/payload-railway.git
+git fetch template
+git checkout template/main -- .    # tree gelijk aan de template
+git add -A && git commit -m "chore: sync latest template" && git push
+```
+
+⚠️ **Pas op met verouderde lokale checkouts.** Na een repo-rename of een kopie kun je
+meerdere mappen hebben die naar dezelfde URL wijzen, waarvan één nog de **oude historie**
+bevat. Push daar niet vanuit — dat zet de repo terug. Clone altijd vers voordat je zoiets
+doet. (Dit ging in de praktijk al bijna mis.)
+
 ## ⚠️ NOOIT doen bij een klant-site
 
 Deze twee hebben in de praktijk al bijna data + code gekost:

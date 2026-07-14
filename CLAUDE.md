@@ -64,6 +64,7 @@ docs/
   content-fields.md       ← how to add pages & fields (the detailed guide)
   CONTENT.md              ← content model + promoting content staging → prod
   DEPLOY-RAILWAY.md       ← the Railway setup (Postgres + Bucket + vars) and deploys
+  TROUBLESHOOTING.md      ← concrete build/deploy failures we hit, and their fixes
   MAINTAINING.md          ← running this across many client sites + template fixes
 ```
 
@@ -155,15 +156,17 @@ Full field-type reference with examples: [docs/content-fields.md](docs/content-f
 - **New global not showing / `getContent('x')` errors** → not registered in `globals.ts`,
   or `generate:types` not run.
 - **Restart `npm run dev` after adding a global** — the Postgres adapter pushes the new
-  table to the dev DB on boot; a running server won't have it yet.
-- **You're on the shared dev DB.** `npm run dev` reads/writes the Railway dev Postgres
-  (`DATABASE_URI`), not a local file. Schema changes you push are visible to the whole team
-  immediately; be deliberate about renaming/removing fields.
-- **"You're about to delete … column / DATA LOSS WARNING" prompt on `npm run dev`** → your
-  code dropped/renamed a field the dev DB still has. Press **N** unless you truly mean to lose
-  that column's data for everyone. Never blindly press `y`.
+  table to your local dev DB on boot; a running server won't have it yet.
+- **Local dev uses a LOCAL Postgres, never a Railway one.** `DATABASE_URI` must point at a
+  local database. In dev, Payload pushes the schema automatically; pushing to a Railway DB
+  breaks that environment's `payload migrate` on deploy. Railway = migrations only.
+- **After adding/removing/swapping a plugin, run `npm run generate:importmap`** and commit —
+  otherwise `next build` fails with `Module not found: @payloadcms/…/client`.
+- **Build/deploy failing?** See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+  (importmap, the `payload migrate` "data loss? (y/N)" hang, `relation … does not exist`,
+  "GitHub Repo not found").
 - **Never `git reset --hard` a customized client site** onto the template — it wipes the
-  site's work. Use `merge`/`cherry-pick`. See [docs/MAINTAINING.md](docs/MAINTAINING.md).
+  site's work. Use `cherry-pick`. See [docs/MAINTAINING.md](docs/MAINTAINING.md).
 - **Image renders empty** → field not filled in `/admin`, or missing `relationTo: 'media'`.
 
 ## Core vs site-specific (important for updates)
