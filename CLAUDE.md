@@ -57,6 +57,7 @@ scripts/
   new-page.mjs            ← `npm run new:page` — scaffolds a page (all 4 steps)
 docs/
   content-fields.md       ← how to add pages & fields (the detailed guide)
+  DEVELOPING.md           ← day-to-day local dev after the template runs on Railway
   MAINTAINING.md          ← running this across many client sites + bug-fix flow
   DEPLOY-RAILWAY.md       ← production deploy (Postgres service + dev/prod envs)
 ```

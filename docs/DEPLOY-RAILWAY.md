@@ -114,6 +114,9 @@ Waarom niet op een volume of in de repo? Een volume hangt per environment (niet
 gedeeld), en repo-media botst met de map waaruit Payload serveert. Een bucket
 heeft dat probleem niet: één opslag, overal dezelfde URL's, geen redeploy-verlies.
 
+> **Draait 'ie? Dan verder ontwikkelen:** hoe je lokaal aan de site werkt staat
+> in [DEVELOPING.md](DEVELOPING.md).
+
 ## Bij latere wijzigingen
 
 - **Content-velden veranderd** (`src/content/*`)? → `npm run generate:types` **en**
