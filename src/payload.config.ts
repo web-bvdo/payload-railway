@@ -1,5 +1,6 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -36,4 +37,25 @@ export default buildConfig({
     },
   }),
   sharp,
+  plugins: [
+    // Media on an S3-compatible bucket (Railway Bucket / Cloudflare R2), so
+    // uploads made in the admin persist and are shared across dev/prod — no
+    // volume, no repo/volume conflict. Auto-disabled locally when S3_BUCKET is
+    // unset → falls back to ./media on disk. forcePathStyle is required for
+    // R2/MinIO-style endpoints. See docs/DEPLOY-RAILWAY.md.
+    s3Storage({
+      enabled: Boolean(process.env.S3_BUCKET),
+      collections: { media: true },
+      bucket: process.env.S3_BUCKET || '',
+      config: {
+        endpoint: process.env.S3_ENDPOINT,
+        region: process.env.S3_REGION || 'auto',
+        forcePathStyle: true,
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+        },
+      },
+    }),
+  ],
 })

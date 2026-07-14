@@ -8,10 +8,9 @@ SQLite-bestand. Het model:
   z'n eigen Postgres.
 - **Lokaal** verbind je met de **dev-Postgres** → iedereen in het team werkt op
   dezelfde dev-data. Wat je lokaal invoert staat meteen voor de rest klaar.
-- **Media** = de `./media`-map in de repo (gewoon meegecommit) shipt met elke
-  deploy. Wil je dat editors óók in de admin foto's uploaden en die blijven
-  staan, dan zet je een **volume** op `/data/media` (`MEDIA_DIR`) — anders zijn
-  prod-uploads na een redeploy weg.
+- **Media** = een **Bucket** (S3-compatible object-storage). Foto's die in de
+  admin geüpload worden landen daar → gedeeld over dev én prod, persistent, geen
+  volume nodig. Lokaal (zonder `S3_BUCKET`) vallen uploads terug op `./media`.
 - **Livegaan** = `dev` → `production` promoten (of prod los vullen). Geen
   dubbel werk.
 
@@ -31,17 +30,18 @@ Postgres-service + de app-service neer en koppelt de database automatisch.
 1. Push deze repo naar een **publieke** GitHub-repo (Railway-templates hebben
    een publieke bron nodig).
 2. Railway → **Templates → New Template**.
-3. Voeg twee services toe op het canvas:
+3. Voeg drie services toe op het canvas:
    - **Database → PostgreSQL** (Railway's kant-en-klare Postgres).
+   - **Bucket** (S3-compatible object-storage voor de media).
    - **GitHub Repo** → deze repo. Nixpacks detecteert Next.js.
-4. Bij de app-service, onder **Variables**, koppel de database:
-   - `DATABASE_URI` = `${{Postgres.DATABASE_URL}}`  ← referentie naar de andere service
+4. Bij de app-service, onder **Variables**, koppel database + bucket:
+   - `DATABASE_URI` = `${{Postgres.DATABASE_URL}}`  ← referentie naar de Postgres-service
    - `PAYLOAD_SECRET` = genereer één (zie hieronder). Zet 'm als template-variabele
      zodat elke deploy een eigen secret krijgt.
-   - `MEDIA_DIR` = `/data/media`
-5. Voeg bij de app-service een **Volume** toe, mount op **`/data`** (voor de
-   media-uploads).
-6. **Publish**. Iedereen die de template deployt krijgt Postgres + app,
+   - `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` =
+     referenties naar de variabelen van de **Bucket**-service (`${{Bucket.…}}`).
+     De exacte namen zie je in de Variables-tab van de Bucket.
+5. **Publish**. Iedereen die de template deployt krijgt Postgres + Bucket + app,
    automatisch gekoppeld.
 
 Het start-commando (`npm run migrate && npm start`) staat in `railway.json` —
@@ -95,27 +95,24 @@ dus prod krijgt het schema automatisch.
 |----------|--------|
 | `DATABASE_URI` | `${{Postgres.DATABASE_URL}}` (referentie naar de Postgres-service) |
 | `PAYLOAD_SECRET` | unieke secret (`node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`) |
-| `MEDIA_DIR` | `/data/media` (het gemounte volume) |
+| `S3_BUCKET` / `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | referenties naar de **Bucket**-service (`${{Bucket.…}}`) |
+| `S3_REGION` | `auto` (optioneel; default is `auto`) |
 
-## Media (en waarom de database los staat)
+## Media (en waarom database + opslag los staan)
 
-Twee dingen die vaak door elkaar lopen:
+Drie soorten data, drie plekken — bewust gescheiden:
 
-- **Tekst / content** (pagina's, velden, relaties) → de **Postgres-service**. Die
-  heeft z'n eigen persistente opslag; content-wijzigingen in de admin overleven
-  elke redeploy **zonder** volume. De database is dus niet een bestand op een
-  volume — het is de losse Postgres-service.
-- **Afbeeldingen** → bestanden op schijf. Twee manieren:
-  1. **In de repo** (`./media`, meegecommit) — de baseline. Foto's die devs
-     toevoegen shippen met de deploy. Simpel, geen volume nodig.
-  2. **Op een volume** (`MEDIA_DIR=/data/media` + volume op `/data`) — nodig als
-     **editors in de productie-admin** uploaden en die moeten blijven staan.
-     Zonder volume liggen die uploads op Railway's tijdelijke schijf en zijn ze
-     na de volgende redeploy weg.
+- **Tekst / content** (pagina's, velden, relaties) → de **Postgres-service**. Eigen
+  persistente opslag; content-wijzigingen in de admin overleven elke redeploy.
+- **Afbeeldingen** → de **Bucket** (S3-compatible). Uploads via de admin landen
+  daar en zijn gedeeld over dev én prod. De `s3Storage`-plugin in
+  `payload.config.ts` regelt dit; hij is actief zodra `S3_BUCKET` gezet is.
+- **Lokaal** (zonder `S3_BUCKET`) → uploads vallen terug op `./media` op schijf,
+  handig voor snel lokaal testen.
 
-De template zet het volume standaard klaar (stap 5), zodat admin-uploads meteen
-persistent zijn. Upload je alleen als dev via de repo, dan kun je het volume
-weglaten.
+Waarom niet op een volume of in de repo? Een volume hangt per environment (niet
+gedeeld), en repo-media botst met de map waaruit Payload serveert. Een bucket
+heeft dat probleem niet: één opslag, overal dezelfde URL's, geen redeploy-verlies.
 
 ## Bij latere wijzigingen
 
