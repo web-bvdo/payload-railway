@@ -62,6 +62,7 @@ docs/
   NEW-SITE.md             ← START HERE per client: copy the template into your own repo
   DEVELOPING.md           ← day-to-day local dev after the template runs on Railway
   content-fields.md       ← how to add pages & fields (the detailed guide)
+  CONTENT.md              ← content model + promoting content staging → prod
   DEPLOY-RAILWAY.md       ← the Railway setup (Postgres + Bucket + vars) and deploys
   MAINTAINING.md          ← running this across many client sites + template fixes
 ```
@@ -79,6 +80,7 @@ docs/
 | `npm run dev` | dev-server, site op `:3000`, admin op `/admin` |
 | `npm run new:page` | nieuwe bewerkbare pagina toevoegen (interactieve wizard) |
 | `npm run migrate:create` | migratie genereren tegen het Postgres-schema (na content-veld-wijziging) — zie [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) |
+| `npm run promote` | content kopiëren tussen omgevingen (staging → prod), zonder auth-tabellen — zie [docs/CONTENT.md](docs/CONTENT.md) |
 | `npm run generate:types` | Payload-types opnieuw genereren (na content-wijziging) |
 | `npm run generate:importmap` | admin import-map herbouwen (na UI-plugin-wijziging) |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -93,6 +95,28 @@ Preferred: `npm run new:page` (interactive). Manual = 4 steps, fully documented 
 The `slug` (in the content group) is what `getContent('slug')` uses; the **route folder
 name** under `(frontend)/` is the URL. They may differ (folder `nieuws/` +
 `getContent('news')` → `/nieuws`).
+
+## Snel een pagina online — recept voor agents
+
+When asked to "put a new page online fast", **edit files directly** (don't use the
+interactive `npm run new:page` wizard — it blocks on prompts). Getting a page *online* is
+pure structure + deploy; no content promotion needed.
+
+1. **Fields** — create `src/content/<slug>.ts`. Give fields a `defaultValue` so the page
+   shows real content the moment it deploys (editors refine later in the admin).
+2. **Register** — add the group to `src/content/globals.ts` (the #1 forgotten step).
+3. **Route** — create `src/app/(frontend)/<url>/page.tsx`; read with
+   `getContent('<slug>')` + `<Img>`/`<Rich>` (see the table below).
+4. **Types + migration:**
+   ```bash
+   npm run generate:types
+   npm run migrate:create -- add_<slug>   # against your LOCAL Postgres
+   ```
+5. **Ship:** commit + push. The deploy runs `payload migrate` → the page is live in every
+   environment (with its default content).
+
+Field types + copy-paste examples: [docs/content-fields.md](docs/content-fields.md).
+Moving editor-entered content between environments (staging → prod): [docs/CONTENT.md](docs/CONTENT.md).
 
 ## Reading fields in a page
 

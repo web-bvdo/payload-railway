@@ -90,9 +90,10 @@ Full guide with examples: **[docs/content-fields.md](docs/content-fields.md)**.
 1. **[docs/NEW-SITE.md](docs/NEW-SITE.md)** — start a client site: copy the template, deploy on Railway, point Railway at your copy.
 2. **[docs/DEVELOPING.md](docs/DEVELOPING.md)** — day-to-day local development.
 3. **[docs/content-fields.md](docs/content-fields.md)** — add pages & fields (with examples).
-4. **[docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md)** — the Railway setup (Postgres + Bucket + vars) and deploys.
-5. **[docs/MAINTAINING.md](docs/MAINTAINING.md)** — many client sites + pushing template fixes to them.
-6. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
+4. **[docs/CONTENT.md](docs/CONTENT.md)** — content model + promoting content staging → prod.
+5. **[docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md)** — the Railway setup (Postgres + Bucket + vars) and deploys.
+6. **[docs/MAINTAINING.md](docs/MAINTAINING.md)** — many client sites + pushing template fixes to them.
+7. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
 
 ## Stack
 
