@@ -18,6 +18,9 @@ Stack: Next.js 15 (App Router) · Payload CMS 3 · Postgres (Railway) · React 1
 
 ## Golden rules
 
+0. **This repo is the template — don't develop in it per client.** For each client site,
+   make your own copy (`Use this template` → new repo) and point Railway at that copy. See
+   [docs/NEW-SITE.md](docs/NEW-SITE.md). Edits here are template-wide, not per-site.
 1. **Add a page with the wizard:** `npm run new:page`. It does all 4 steps. Prefer it over
    doing them by hand.
 2. **After changing any content fields, run `npm run generate:types`.** Types drive
@@ -57,6 +60,7 @@ scripts/
   new-page.mjs            ← `npm run new:page` — scaffolds a page (all 4 steps)
 docs/
   content-fields.md       ← how to add pages & fields (the detailed guide)
+  NEW-SITE.md             ← START HERE per client: copy the template into your own repo
   DEVELOPING.md           ← day-to-day local dev after the template runs on Railway
   MAINTAINING.md          ← running this across many client sites + bug-fix flow
   DEPLOY-RAILWAY.md       ← production deploy (Postgres service + dev/prod envs)

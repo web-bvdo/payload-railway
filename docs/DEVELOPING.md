@@ -3,6 +3,10 @@
 Deze gids gaat over de **dagelijkse ontwikkeling**: je hebt de template al op
 Railway staan (Postgres + app + Bucket) en wilt nu lokaal aan de site werken.
 
+> **Werk je nog in de template zelf?** Doe dat niet. Maak eerst per klant een
+> eigen kopie-repo — zie [NEW-SITE.md](NEW-SITE.md). Hieronder is "de repo" jouw
+> klant-repo, niet de template.
+
 ## Hoe het in elkaar zit
 
 | Wat | Waar |

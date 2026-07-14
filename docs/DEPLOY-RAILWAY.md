@@ -1,5 +1,9 @@
 # Deployen naar Railway (Postgres + dev/prod)
 
+> **Nieuwe klantsite?** Werk niet in deze template — maak eerst een eigen
+> kopie-repo. Zie [NEW-SITE.md](NEW-SITE.md). Deze gids beschrijft de
+> Railway-opzet zelf (Postgres/Bucket/vars).
+
 Eén gedeelde Postgres per omgeving. Geen seed, geen export/import, geen
 SQLite-bestand. Het model:
 
