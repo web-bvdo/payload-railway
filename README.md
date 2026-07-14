@@ -7,24 +7,29 @@ Content is **field-level, ACF-style**: you define named fields, then pull them i
 own hand-built pages by key — you decide where each field goes, not Payload. No
 block/page-builder.
 
-> **Building in this repo (human or AI)?** Read **[CLAUDE.md](CLAUDE.md)** first — it's the
-> full working guide. Running it across multiple client sites? See
-> **[docs/MAINTAINING.md](docs/MAINTAINING.md)**.
+> **This repo is the template.** For a client site, don't develop in it — make your own copy
+> and point Railway at it. Start at **[docs/NEW-SITE.md](docs/NEW-SITE.md)**. Building/editing
+> the template itself? Read **[CLAUDE.md](CLAUDE.md)** first.
 
-## Quick start (new site)
+Runs on **Railway**: a **Postgres** service (database) + a **Bucket** (media). One click from
+the template provisions both, wired to the app.
+
+## Run it locally
+
+After you have your own copy (see [docs/NEW-SITE.md](docs/NEW-SITE.md)):
 
 ```bash
 npm install
 npm run setup        # creates .env with a unique PAYLOAD_SECRET
-npm run seed         # first admin user (from .env) + sample home content
+# then set DATABASE_URI in .env → a Postgres (Railway public URL, or a local Postgres)
 npm run dev
 ```
 
 - Site: http://localhost:3000
-- Admin: http://localhost:3000/admin
+- Admin: http://localhost:3000/admin → **create the first user** (or `npm run seed` for a fresh DB)
 
-Default admin comes from `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` (defaults to
-`admin@example.com` / `changeme` — change them). SQLite by default, so no database server.
+Locally, image uploads fall back to `./media` when the `S3_*` vars are unset. Full local
+workflow (which database, adding fields, migrations): **[docs/DEVELOPING.md](docs/DEVELOPING.md)**.
 
 ## The idea
 
@@ -80,8 +85,16 @@ Full guide with examples: **[docs/content-fields.md](docs/content-fields.md)**.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run build` / `npm start` | productie |
 
+## Docs (read in this order)
+
+1. **[docs/NEW-SITE.md](docs/NEW-SITE.md)** — start a client site: copy the template, deploy on Railway, point Railway at your copy.
+2. **[docs/DEVELOPING.md](docs/DEVELOPING.md)** — day-to-day local development.
+3. **[docs/content-fields.md](docs/content-fields.md)** — add pages & fields (with examples).
+4. **[docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md)** — the Railway setup (Postgres + Bucket + vars) and deploys.
+5. **[docs/MAINTAINING.md](docs/MAINTAINING.md)** — many client sites + pushing template fixes to them.
+6. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
+
 ## Stack
 
-Next.js 15 (App Router) · Payload CMS 3 · SQLite (dev) · React 19 · TypeScript. For
-production databases and media, and the multi-site update flow, see
-[docs/MAINTAINING.md](docs/MAINTAINING.md).
+Next.js 15 (App Router) · Payload CMS 3 · Postgres · React 19 · TypeScript. Hosted on
+Railway (Postgres service + Bucket for media).

@@ -256,7 +256,7 @@ Content die op elke pagina terugkomt zet je in één groep en lees je uit in je 
 | Er verschijnt een rare waarde zoals een datum-timestamp | Je rendert een systeemveld als `c.createdAt` i.p.v. je eigen veld | Gebruik je eigen veldnaam, bv. `{c.title}` |
 | Afbeelding blijft leeg | Veld nog niet ingevuld in `/admin`, of geen `relationTo: 'media'` | Vul in bij admin / controleer het veld |
 | `Cannot import ... server-only` of client-fout | `@/content` geïmporteerd in een client component | `@/content` alleen in server components (geen `'use client'`) |
-| Dev-server blokkeert lang bij "rename table" | Global **verwijderd of hernoemd**; SQLite-autopush raakt in de war | In dev: stop de server, gooi `payload.db` weg, herstart |
+| Dev-server vraagt een kolom/tabel te verwijderen (DATA LOSS-prompt) | Global **verwijderd of hernoemd**; de dev-push wil het schema aanpassen | Druk **N** tenzij je die data echt mag verliezen; controleer je velddefinitie. Zie [DEVELOPING.md](DEVELOPING.md) |
 
 ---
 

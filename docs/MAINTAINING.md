@@ -9,55 +9,50 @@ template naar álle bestaande sites krijgt.
 ```
         payload-template   ← deze repo (de "core", onze bron)
         /      |       \
-   klant-a   klant-b   klant-c   ← elk een clone/fork met eigen pagina's + eigen database
+   klant-a   klant-b   klant-c   ← elk een kopie met eigen pagina's, eigen Postgres + Bucket
 ```
 
 - **Deze repo** = de gedeelde basis: Payload-config, de content-helpers, scripts, docs.
-- **Elke klant-site** = een kopie met eigen content-groepen, routes, styling en database.
+- **Elke klant-site** = een kopie met eigen content-groepen, routes, styling, database + Bucket.
 
 De sleutel tot pijnloze updates is de **core/site-specifiek-scheiding** (zie de tabel in
 [CLAUDE.md](../CLAUDE.md#core-vs-site-specific-important-for-updates)). Klantwerk zit in
-*andere bestanden* dan de core, dus een merge van de template botst zelden.
+*andere bestanden* dan de core, dus een template-fix botst zelden met klantwerk.
 
 ## Nieuwe klant-site opzetten
 
-```bash
-git clone <template-repo-url> klant-x
-cd klant-x
-git remote rename origin upstream            # template blijft 'upstream'
-git remote add origin <nieuwe-repo-van-klant-x>
-npm install
-npm run setup                                # maakt .env met unieke PAYLOAD_SECRET
-# pas ADMIN_EMAIL / ADMIN_PASSWORD aan in .env
-npm run seed                                 # admin-gebruiker + home-content
-npm run dev                                  # bouwen maar
-git push -u origin main
-```
+Zie **[NEW-SITE.md](NEW-SITE.md)** — de volledige flow: kopie van de template maken
+(`Use this template`), op Railway zetten, Railway op de kopie laten wijzen, lokaal
+ontwikkelen. Kort samengevat: je werkt **nooit in deze template**, maar per klant in een
+eigen kopie-repo.
 
-Daarna bouw je de site: pagina's toevoegen met `npm run new:page`, routes/styling in
-`src/app/(frontend)/`.
+## Een template-fix naar alle sites brengen
 
-## Een fix naar alle sites brengen
+Omdat elke klant-repo een **kopie** van de template is, haal je fixes op door de template als
+extra remote toe te voegen en de losse commit te **cherry-picken** (werkt ook als de repo via
+`Use this template` is gemaakt, dus zonder gedeelde git-historie):
 
 1. **Fix in de template** (deze repo), commit, en tag een versie:
    ```bash
    git commit -am "fix: <omschrijving>"
    git tag v1.1.0 && git push --tags
    ```
-2. **Per klant-site** de update binnenhalen:
+2. **Per klant-site** de fix binnenhalen:
    ```bash
-   git fetch upstream
-   git merge upstream/main        # of: git merge v1.1.0 voor een specifieke versie
-   npm install                    # als dependencies wijzigden
+   git remote add template https://github.com/web-bvdo/payload-railway.git   # eenmalig
+   git fetch template
+   git cherry-pick <commit-hash>     # de losse fix
+   npm install                       # als dependencies wijzigden
    npm run generate:types
+   npm run migrate:create            # alleen als de fix content-velden raakt
    npm run typecheck && npm run build
+   git push
    ```
-3. Merge-conflicten zijn zeldzaam en zitten normaal alleen in `home.ts` /
-   `(frontend)/page.tsx` (de defaults die de klant heeft aangepast) → hou de klant-versie.
-   De core-bestanden (`src/content/index.tsx`, `scripts/*`, configs) worden per site
-   nauwelijks aangeraakt, dus die mergen schoon.
 
-**Cherry-pick** als je maar één fix wilt zonder de rest: `git cherry-pick <commit>`.
+> `git merge template/main` kan óók, maar alleen als je de klant-repo ooit met `git clone`
+> van de template hebt gemaakt (gedeelde historie). Repo's uit `Use this template` hebben
+> een verse historie → een merge geeft *"unrelated histories"*; gebruik dan cherry-pick.
+> Conflicten zitten normaal alleen in `home.ts` / `(frontend)/page.tsx` → hou de klant-versie.
 
 **Sterk afgeweken site?** Als een klant-site ver van de template staat (eigen content-model,
 localization, veel eigen pagina's), doe dan **geen** volledige merge — dat geeft een berg
@@ -89,24 +84,20 @@ Deze twee hebben in de praktijk al bijna data + code gekost:
 Deze dingen MOETEN per site kloppen — ze zijn geen onderdeel van de template zelf omdat ze
 per deployment verschillen:
 
-Voor een Vercel-deploy staat het volledige stappenplan in
-[docs/DEPLOY-VERCEL.md](DEPLOY-VERCEL.md). In het kort:
+Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
+[NEW-SITE.md](NEW-SITE.md). In het kort, per site:
 
-- [ ] **Unieke `PAYLOAD_SECRET` per site.** Nooit hergebruiken. Zet 'm in de Vercel
-      env-vars (lokaal regelt `npm run setup` dit).
-- [ ] **Eigen database per site.** Deel nooit één database tussen klanten.
-- [ ] **Productie-database = hosted, niet het SQLite-bestand.** De template draait op de
-      `@payloadcms/db-sqlite` adapter; wijs in productie `DATABASE_URI` naar een hosted
-      **libSQL/Turso**-database (+ `DATABASE_AUTH_TOKEN`). Zelfde adapter, geen swap nodig.
-      (Serverless heeft een read-only filesystem, dus een lokaal `.db`-bestand kan niet.)
-- [ ] **Media op cloud-opslag bij serverless.** De `/media`-map overleeft geen serverless
-      deploy. Al ingebouwd via **Vercel Blob** (`@payloadcms/storage-vercel-blob`): zet een
-      Blob-store aan in Vercel → `BLOB_READ_WRITE_TOKEN` schakelt het automatisch in.
-      Alternatief: Cloudflare R2 via `@payloadcms/storage-s3`. VPS met schijf: lokaal mag.
-- [ ] **Schema via migrations in productie** (geen dev-autopush). `npm run migrate:create`
-      lokaal, committen; `vercel-build` past ze toe bij de deploy.
+- [ ] **Eigen Railway-project per site.** Deel nooit database, Bucket of secret tussen klanten.
+- [ ] **Unieke `PAYLOAD_SECRET` per site.** De template genereert 'm automatisch bij een
+      deploy (`${{secret(48)}}`); lokaal regelt `npm run setup` dit.
+- [ ] **Database = de Railway Postgres-service** (`DATABASE_URI = ${{Postgres.DATABASE_URL}}`).
+      Eigen Postgres per site.
+- [ ] **Media = de Railway Bucket** (S3), gekoppeld via de `S3_*`-vars. Uploads in de admin
+      blijven zo bewaard en gedeeld tussen dev/prod.
+- [ ] **Schema via migrations in productie** (geen dev-push). `npm run migrate:create`
+      lokaal, committen; het start-commando draait `payload migrate` bij elke deploy.
 - [ ] **Admin-wachtwoord gewijzigd** na de eerste login (niet het `.env`-default laten staan).
-- [ ] **Backups** van database én media, per site.
+- [ ] **Backups** van de Postgres-database én de Bucket, per site (Railway biedt DB-backups).
 - [ ] **Node-versie** volgens `.nvmrc` (`nvm use`).
 
 ## Toekomst: core als npm-package

@@ -59,11 +59,11 @@ scripts/
   seed.ts                 ← `npm run seed` — first admin user + home content
   new-page.mjs            ← `npm run new:page` — scaffolds a page (all 4 steps)
 docs/
-  content-fields.md       ← how to add pages & fields (the detailed guide)
   NEW-SITE.md             ← START HERE per client: copy the template into your own repo
   DEVELOPING.md           ← day-to-day local dev after the template runs on Railway
-  MAINTAINING.md          ← running this across many client sites + bug-fix flow
-  DEPLOY-RAILWAY.md       ← production deploy (Postgres service + dev/prod envs)
+  content-fields.md       ← how to add pages & fields (the detailed guide)
+  DEPLOY-RAILWAY.md       ← the Railway setup (Postgres + Bucket + vars) and deploys
+  MAINTAINING.md          ← running this across many client sites + template fixes
 ```
 
 **How content flows:** `src/content/<slug>.ts` (fields) → registered in `globals.ts` →
