@@ -100,13 +100,17 @@ name** under `(frontend)/` is the URL. They may differ (folder `nieuws/` +
 
 Building a page from a design (copy included)? The golden rule:
 
-> **Text typed in the admin lives in the database and does NOT travel with `git push`.
-> So put the design's copy in CODE — then it ships with the push and is live right after
-> the deploy.** Two ways, use both (hybrid):
-> - **Editable by the client** → a field with `defaultValue` = the copy. Ships in code,
->   renders immediately, still overridable in the admin. For richText use the `rich()`
->   helper: `import { rich } from './rich'`.
+> **Anything typed/uploaded in the admin lives in the database/Bucket and does NOT travel
+> with `git push`. So put the design's copy AND images in CODE — then they ship with the
+> push and are live right after the deploy.** Use both (hybrid):
+> - **Text, editable by the client** → a field with `defaultValue` = the copy. For richText
+>   use the `rich()` helper: `import { rich } from './rich'`.
 > - **Fixed layout copy** → write it straight into the route's JSX.
+> - **Images** → put the design files in `public/images/`. Render an editable slot as
+>   `<Img field={c.heroImage} fallback="/images/hero.jpg" width={1200} height={800} />` —
+>   the static file ships in code and shows until someone uploads a replacement in the
+>   admin. Purely fixed images: `<Img fallback="/images/x.jpg" .../>` with no `field`, or
+>   `next/image` directly.
 
 **Edit files directly** (don't use the interactive `npm run new:page` wizard — it blocks
 on prompts). Getting a page online is pure structure + code; no content promotion needed.

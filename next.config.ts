@@ -9,9 +9,10 @@ const dirname = path.dirname(__filename)
 const nextConfig: NextConfig = {
   images: {
     localPatterns: [
-      {
-        pathname: '/api/media/file/**',
-      },
+      // uploaded media (served through Payload)
+      { pathname: '/api/media/file/**' },
+      // static design/fallback images shipped in the repo (public/images/**)
+      { pathname: '/images/**' },
     ],
   },
   webpack: (webpackConfig) => {

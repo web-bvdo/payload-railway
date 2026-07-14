@@ -18,23 +18,37 @@ export async function getContent<T extends GlobalSlug>(slug: T) {
 }
 
 // Render an upload field. Pass through width/height/className/priority etc.
-type ImgProps = { field?: number | Media | null } & Omit<
-  React.ComponentProps<typeof NextImage>,
-  'src' | 'alt' | 'width' | 'height'
-> & { alt?: string; width?: number; height?: number }
+// `fallback` = a static image shipped in the repo (design default). It shows when
+// no image has been uploaded yet, so design imagery ships with `git push` and is
+// live immediately — the client can still upload/override it in the admin later.
+// Use a static import (auto-sized) or a path under public/images/ (pass w/h). See
+// docs/CONTENT.md.
+type ImgProps = {
+  field?: number | Media | null
+  fallback?: React.ComponentProps<typeof NextImage>['src']
+} & Omit<React.ComponentProps<typeof NextImage>, 'src' | 'alt' | 'width' | 'height'> & {
+    alt?: string
+    width?: number
+    height?: number
+  }
 
-export function Img({ field, alt, width, height, ...rest }: ImgProps) {
+export function Img({ field, fallback, alt, width, height, ...rest }: ImgProps) {
   const m = field && typeof field === 'object' ? field : null
-  if (!m?.url) return null
-  return (
-    <NextImage
-      src={m.url}
-      alt={alt ?? m.alt ?? ''}
-      width={width ?? m.width ?? 1200}
-      height={height ?? m.height ?? 800}
-      {...rest}
-    />
-  )
+  if (m?.url) {
+    return (
+      <NextImage
+        src={m.url}
+        alt={alt ?? m.alt ?? ''}
+        width={width ?? m.width ?? 1200}
+        height={height ?? m.height ?? 800}
+        {...rest}
+      />
+    )
+  }
+  if (fallback) {
+    return <NextImage src={fallback} alt={alt ?? ''} width={width} height={height} {...rest} />
+  }
+  return null
 }
 
 // Render a richText field.

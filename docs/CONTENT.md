@@ -64,6 +64,11 @@ gebruik ze samen (hybride):
   { name: 'intro', type: 'richText', defaultValue: rich('Alinea 1.', 'Alinea 2.') }
   ```
 - **Vaste opmaaktekst** → direct in de route (`page.tsx`) hardcoden.
+- **Afbeeldingen** → zet de design-bestanden in `public/images/`. Een bewerkbaar beeld
+  render je als `<Img field={c.heroImage} fallback="/images/hero.jpg" width={1200} height={800} />`
+  — het statische bestand shipt met de push en toont totdat iemand in de admin iets uploadt.
+  Puur vaste beelden: `<Img fallback="/images/x.jpg" … />` zonder `field`. (Geen `defaultValue`
+  op een `upload`-veld: dat verwijst naar een Bucket-bestand en reist niet mee met git.)
 
 Zo hoeft er voor een nieuwe pagina **geen content-promotie**; alles gaat mee met de push.
 De promote-flow hierboven is puur voor content die editors ná livegang zelf in de admin
