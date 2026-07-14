@@ -30,28 +30,12 @@ npm install
 npm run setup      # maakt .env aan met een unieke PAYLOAD_SECRET
 ```
 
-## 2. Kies waar je lokaal je database vandaan haalt
+## 2. Zet een lokale database op
 
-Je moet `DATABASE_URI` in `.env` invullen. Twee manieren:
+Je vult `DATABASE_URI` in `.env` in — die wijst naar een **lokale** Postgres:
 
-### Optie A — de Railway dev-database (gedeelde team-data) · *aanbevolen bij een team*
-
-Iedereen werkt op dezelfde data; wat jij invoert zien collega's meteen.
-
-1. Railway → open je **Postgres**-service → tab **Variables** → kopieer
-   **`DATABASE_PUBLIC_URL`** (of **Connect → Public Network**).
-2. Zet 'm in `.env`:
-   ```
-   DATABASE_URI=postgresql://postgres:<pw>@<host>.proxy.rlwy.net:<port>/railway
-   ```
-
-> Wil je prod-data niet raken tijdens het bouwen? Maak in Railway een aparte
-> **`dev`-environment** (eigen Postgres) en gebruik díe public-URL. Zie
-> [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md).
-
-### Optie B — een lokale Postgres (geïsoleerd) · *aanbevolen solo / voor experimenten*
-
-Niks gedeeld, geen internet nodig, je kunt vrij rommelen met het schema.
+Gebruik een **lokale Postgres**. Lokaal draait Payload in dev-mode en maakt het
+schema automatisch aan (*push*) — je hoeft niks te migreren om te starten.
 
 ```bash
 # met Docker:
@@ -60,8 +44,18 @@ docker run --name pg -e POSTGRES_PASSWORD=pw -p 5432:5432 -d postgres:16
 ```
 DATABASE_URI=postgresql://postgres:pw@localhost:5432/postgres
 ```
-(Of een via Homebrew geïnstalleerde Postgres — dan bv.
+(Of een via Homebrew geïnstalleerde Postgres:
 `DATABASE_URI=postgresql://<jouw-user>@localhost:5432/<db>`.)
+
+> ⚠️ **Wijs je lokale dev NOOIT naar een Railway-database.** In dev-mode *pusht*
+> Payload het schema automatisch naar de database waarmee je verbindt. Doe je dat
+> tegen een Railway-omgeving, dan raakt die database "dev-gepusht" en **blokkeert de
+> volgende deploy** op `payload migrate` (de *"data loss? (y/N)"*-prompt die niemand
+> in een container kan beantwoorden). Railway-omgevingen zijn **migratie-only**;
+> lokaal werk je op je eigen, aparte database.
+>
+> Wil je met het team dezelfde content zien? Bekijk/bewerk die via de **gedeployde**
+> admin op Railway — niet door lokaal met die database te verbinden.
 
 **Media lokaal:** laat de `S3_*`-variabelen leeg → uploads gaan naar `./media`
 op schijf. Niks in te stellen.
@@ -75,12 +69,9 @@ npm run dev
 - Site: <http://localhost:3000>
 - Admin: <http://localhost:3000/admin>
 
-Eerste keer op een **lege** database: de admin vraagt om een eerste gebruiker
+Eerste keer op je lege lokale database: de admin vraagt om een eerste gebruiker
 (*Create first user*). Snel wat testcontent erin? `npm run seed` maakt een admin
 (uit `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`) + home-content aan.
-
-Op de **gedeelde** dev-database (optie A) bestaan gebruiker + content meestal al
-— dan log je gewoon in.
 
 ---
 
@@ -90,8 +81,9 @@ Dit is waar het meestal verwarrend wordt:
 
 - **Lokaal (`npm run dev`)** synchroniseert Payload het databaseschema
   **automatisch** met je velddefinities (drizzle *push*). Verander je een veld,
-  dan past de dev-database zich bij het opslaan/herstarten aan. Geen migratie
-  nodig om te kunnen werken.
+  dan past je lokale database zich bij het opslaan/herstarten aan. Geen migratie
+  nodig om te kunnen werken. (Daarom mag je hier alleen een **lokale** database
+  gebruiken — push tegen een Railway-database breekt daar de deploy.)
 - **Productie (Railway)** doet dat **niet** automatisch — daar draait bij elke
   deploy `payload migrate`, dat de migratiebestanden in `src/migrations/`
   toepast. Zonder migratie krijgt productie geen schema (en dan foutmeldingen
@@ -129,9 +121,9 @@ git add src/migrations && git commit -m "chore: migration" && git push
 ## Wat gaat waar heen?
 
 - **Code / opmaak / nieuwe velden** → committen en pushen → Railway deployt.
-- **Tekst en afbeeldingen** → invoeren in `/admin`. Die leven in de
-  Railway-database/Bucket (of, bij optie A, meteen in de gedeelde dev-data).
-  Je hoeft daar niks voor te committen.
+- **Tekst en afbeeldingen** → invoeren in `/admin`. Lokaal landen die in je
+  lokale database (en `./media`); op de gedeployde site in de Railway-Postgres +
+  Bucket. Je hoeft daar niks voor te committen.
 
 ## Naar productie
 
