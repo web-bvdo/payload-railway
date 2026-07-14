@@ -18,9 +18,6 @@ Stack: Next.js 15 (App Router) · Payload CMS 3 · Postgres (Railway) · React 1
 
 ## Golden rules
 
-0. **This repo is the template — don't develop in it per client.** For each client site,
-   make your own copy (`Use this template` → new repo) and point Railway at that copy. See
-   [docs/NEW-SITE.md](docs/NEW-SITE.md). Edits here are template-wide, not per-site.
 1. **Add a page with the wizard:** `npm run new:page`. It does all 4 steps. Prefer it over
    doing them by hand.
 2. **After changing any content fields, run `npm run generate:types`.** Types drive
