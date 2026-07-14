@@ -49,15 +49,22 @@ npm run promote -- --from "<STAGING_DATABASE_PUBLIC_URL>" --to "<PROD_DATABASE_P
 > Het script gebruikt `pg_dump | psql` (type-correct). De `pg_dump`-versie moet bij de
 > server passen; het script zoekt de juiste of geeft een `brew install postgresql@<major>`-hint.
 
-## Een nieuwe pagina snél online (ook voor AI-agents)
+## Een nieuwe pagina mét tekst snél online (ook voor AI-agents)
 
-Een pagina "online zetten" = **structuur** toevoegen en deployen. Dat is puur code — geen
-content-promotie nodig. Zie het beknopte recept in **[CLAUDE.md](../CLAUDE.md)**
-("Snel een pagina online — recept voor agents"). Kort:
+Krijg je een ontwerp binnen mét de teksten erin? Dan is de valkuil: tekst die je in de
+**admin** typt staat in de database en gaat **niet** mee met `git push`. Zet de design-tekst
+daarom in **code** — dan reist 'ie mee en staat 'ie meteen na de deploy live. Twee manieren,
+gebruik ze samen (hybride):
 
-1. `src/content/<slug>.ts` (velden, met zinvolle `defaultValue`s zodat de pagina meteen
-   iets toont), registreren in `src/content/globals.ts`.
-2. Route `src/app/(frontend)/<url>/page.tsx` met `getContent`/`<Img>`/`<Rich>`.
-3. `npm run generate:types` → `npm run migrate:create -- add_<slug>` (tegen je lokale Postgres).
-4. Commit + push → deploy → pagina live in staging/prod.
-5. Tekst/beeld verfijnen editors in de admin.
+- **Klant-bewerkbaar** → een veld met `defaultValue` = de tekst. Ships in code, rendert
+  meteen, blijft aanpasbaar in de admin. Voor `richText` de `rich()`-helper:
+  ```ts
+  import { rich } from './rich'
+  { name: 'heroTitle', type: 'text', defaultValue: 'De kop uit het ontwerp' }
+  { name: 'intro', type: 'richText', defaultValue: rich('Alinea 1.', 'Alinea 2.') }
+  ```
+- **Vaste opmaaktekst** → direct in de route (`page.tsx`) hardcoden.
+
+Zo hoeft er voor een nieuwe pagina **geen content-promotie**; alles gaat mee met de push.
+De promote-flow hierboven is puur voor content die editors ná livegang zelf in de admin
+invoeren. Volledig stappenrecept: **[CLAUDE.md](../CLAUDE.md)** ("Snel een pagina online").

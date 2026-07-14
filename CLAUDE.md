@@ -96,27 +96,43 @@ The `slug` (in the content group) is what `getContent('slug')` uses; the **route
 name** under `(frontend)/` is the URL. They may differ (folder `nieuws/` +
 `getContent('news')` → `/nieuws`).
 
-## Snel een pagina online — recept voor agents
+## Snel een pagina online (mét tekst) — recept voor agents
 
-When asked to "put a new page online fast", **edit files directly** (don't use the
-interactive `npm run new:page` wizard — it blocks on prompts). Getting a page *online* is
-pure structure + deploy; no content promotion needed.
+Building a page from a design (copy included)? The golden rule:
 
-1. **Fields** — create `src/content/<slug>.ts`. Give fields a `defaultValue` so the page
-   shows real content the moment it deploys (editors refine later in the admin).
+> **Text typed in the admin lives in the database and does NOT travel with `git push`.
+> So put the design's copy in CODE — then it ships with the push and is live right after
+> the deploy.** Two ways, use both (hybrid):
+> - **Editable by the client** → a field with `defaultValue` = the copy. Ships in code,
+>   renders immediately, still overridable in the admin. For richText use the `rich()`
+>   helper: `import { rich } from './rich'`.
+> - **Fixed layout copy** → write it straight into the route's JSX.
+
+**Edit files directly** (don't use the interactive `npm run new:page` wizard — it blocks
+on prompts). Getting a page online is pure structure + code; no content promotion needed.
+
+1. **Fields** — create `src/content/<slug>.ts` with the design's copy as defaults:
+   ```ts
+   import { rich } from './rich'
+   // ...
+   { name: 'heroTitle', type: 'text', defaultValue: 'De kop uit het ontwerp' },
+   { name: 'intro', type: 'richText', defaultValue: rich('Alinea 1.', 'Alinea 2.') },
+   ```
 2. **Register** — add the group to `src/content/globals.ts` (the #1 forgotten step).
-3. **Route** — create `src/app/(frontend)/<url>/page.tsx`; read with
-   `getContent('<slug>')` + `<Img>`/`<Rich>` (see the table below).
+3. **Route** — create `src/app/(frontend)/<url>/page.tsx`; read editable bits with
+   `getContent('<slug>')` + `<Img>`/`<Rich>` (see the table below), and hardcode fixed
+   layout copy directly in the JSX.
 4. **Types + migration:**
    ```bash
    npm run generate:types
    npm run migrate:create -- add_<slug>   # against your LOCAL Postgres
    ```
 5. **Ship:** commit + push. The deploy runs `payload migrate` → the page is live in every
-   environment (with its default content).
+   environment, with its text (from the code defaults).
 
 Field types + copy-paste examples: [docs/content-fields.md](docs/content-fields.md).
-Moving editor-entered content between environments (staging → prod): [docs/CONTENT.md](docs/CONTENT.md).
+The text-in-code vs admin-content model, and promoting editor content (staging → prod):
+[docs/CONTENT.md](docs/CONTENT.md).
 
 ## Reading fields in a page
 
