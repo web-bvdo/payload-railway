@@ -11,8 +11,8 @@ SQLite-bestand. Het model:
 - **Omgevingen** = Railway **environments** (`production`, evt. `staging`), elk met
   z'n eigen Postgres. Elke omgeving is **migratie-only**: bij de deploy draait
   `payload migrate`.
-- **Lokaal** ontwikkel je tegen een **eigen, lokale Postgres** (dev-mode/push) —
-  níét tegen een Railway-database. Zie [DEVELOPING.md](DEVELOPING.md).
+- **Lokaal** ontwikkel je tegen een **eigen, lokale Postgres** — óók migratie-only
+  (`push: false`), net als Railway. Zie [DEVELOPING.md](DEVELOPING.md).
 - **Media** = een **Bucket** (S3-compatible object-storage). Foto's die in de
   admin geüpload worden landen daar → persistent, geen volume nodig. Lokaal
   (zonder `S3_BUCKET`) vallen uploads terug op `./media`.
@@ -22,10 +22,9 @@ SQLite-bestand. Het model:
 > zichtbaar als eigen vlak, kent meerdere schrijvers (schalen), en heeft nette
 > backups. De prijs: een extra service.
 
-> ⚠️ **Verbind lokale dev nooit met een Railway-database.** In dev-mode pusht
-> Payload het schema automatisch; een Railway-omgeving die ook `payload migrate`
-> draait blokkeert dan bij de deploy op een *"data loss? (y/N)"*-prompt. Lokaal =
-> eigen database, Railway = migraties. Zie [DEVELOPING.md](DEVELOPING.md).
+> ℹ️ **Schema-wijzigingen gaan overal via migraties** (`push: false`). Verander je
+> een veld, dan hoort daar een migratie bij (`npm run migrate:create`), lokaal én
+> op Railway — nooit een auto-push. Zie [DEVELOPING.md](DEVELOPING.md).
 
 ---
 
@@ -76,16 +75,17 @@ workflow (database opzetten, velden toevoegen, migraties) staat in
 
 ## Migraties (nodig voor productie)
 
-Productie pusht schema **niet** automatisch — daar draaien migraties. Eenmalig,
-en opnieuw na elke content-veld-wijziging:
+Schema-wijzigingen gaan **overal** via migraties (`push: false`) — geen auto-push,
+lokaal noch op Railway. Na elke content-veld-wijziging:
 
 ```bash
-npm run migrate:create        # genereert src/migrations/ tegen je Postgres-schema
+npm run migrate:create -- <naam>   # genereert src/migrations/ tegen je Postgres-schema
+npm run migrate                    # past 'm toe op je lokale database
 git add src/migrations && git commit -m "chore: migration" && git push
 ```
 
 Railway draait `npm run migrate` bij elke deploy (staat in het start-commando),
-dus prod krijgt het schema automatisch.
+dus prod krijgt de migratie automatisch.
 
 > De template-repo bevat al een initiële migratie. Genereer een nieuwe met
 > `npm run migrate:create` (tegen je lokale Postgres) telkens als je
@@ -121,8 +121,9 @@ heeft dat probleem niet: één opslag, overal dezelfde URL's, geen redeploy-verl
 
 ## Bij latere wijzigingen
 
-- **Content-velden veranderd** (`src/content/*`)? → `npm run generate:types` **en**
-  `npm run migrate:create`, commit de migratie, push. Railway past 'm toe.
+- **Content-velden veranderd** (`src/content/*`)? → `npm run generate:types`,
+  `npm run migrate:create -- <naam>`, `npm run migrate` (lokaal), commit de
+  migratie, push. Railway past 'm toe.
 - **Content/afbeeldingen**? → gewoon in de admin invoeren; staat direct in de
   gedeelde database. Geen seed, geen push.
 - **Alleen opmaak/routes**? → gewoon pushen.

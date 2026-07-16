@@ -34,8 +34,9 @@ npm run setup      # maakt .env aan met een unieke PAYLOAD_SECRET
 
 Je vult `DATABASE_URI` in `.env` in — die wijst naar een **lokale** Postgres:
 
-Gebruik een **lokale Postgres**. Lokaal draait Payload in dev-mode en maakt het
-schema automatisch aan (*push*) — je hoeft niks te migreren om te starten.
+Gebruik een **lokale Postgres**. Het schema wordt **niet** automatisch gepusht:
+je database komt op peil via migraties — dezelfde als op productie. Voer bij een
+lege database dus eerst `npm run migrate` uit (gebeurt ook automatisch bij boot).
 
 ```bash
 # met Docker:
@@ -47,15 +48,15 @@ DATABASE_URI=postgresql://postgres:pw@localhost:5432/postgres
 (Of een via Homebrew geïnstalleerde Postgres:
 `DATABASE_URI=postgresql://<jouw-user>@localhost:5432/<db>`.)
 
-> ⚠️ **Wijs je lokale dev NOOIT naar een Railway-database.** In dev-mode *pusht*
-> Payload het schema automatisch naar de database waarmee je verbindt. Doe je dat
-> tegen een Railway-omgeving, dan raakt die database "dev-gepusht" en **blokkeert de
-> volgende deploy** op `payload migrate` (de *"data loss? (y/N)"*-prompt die niemand
-> in een container kan beantwoorden). Railway-omgevingen zijn **migratie-only**;
-> lokaal werk je op je eigen, aparte database.
+> ℹ️ **Lokaal en productie werken nu identiek: schema-wijzigingen gaan altijd via
+> migraties** (`push: false` in `src/payload.config.ts`). Dat voorkomt de valkuil
+> waarbij dev de kolom zélf toevoegde (*push*), `migrate:create` daardoor een
+> **lege** migratie schreef, en productie de kolom nooit kreeg → 500's met
+> *`column … does not exist`*.
 >
 > Wil je met het team dezelfde content zien? Bekijk/bewerk die via de **gedeployde**
-> admin op Railway — niet door lokaal met die database te verbinden.
+> admin op Railway. Verbind je lokaal met een Railway-database, dan geldt: doe eerst
+> `npm run migrate`, en push nooit ongemigreerde schema-wijzigingen.
 
 **Media lokaal:** laat de `S3_*`-variabelen leeg → uploads gaan naar `./media`
 op schijf. Niks in te stellen.
@@ -69,28 +70,32 @@ npm run dev
 - Site: <http://localhost:3000>
 - Admin: <http://localhost:3000/admin>
 
-Eerste keer op je lege lokale database: de admin vraagt om een eerste gebruiker
-(*Create first user*). Snel wat testcontent erin? `npm run seed` maakt een admin
-(uit `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`) + home-content aan.
+Eerste keer op je lege lokale database: draai `npm run migrate` (of start
+`npm run dev` — pending migraties draaien ook bij boot). De admin vraagt daarna om
+een eerste gebruiker (*Create first user*). Snel wat testcontent erin? `npm run seed`
+maakt een admin (uit `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env`) + home-content aan.
 
 ---
 
-## Het kernidee: `push` (lokaal) vs. migraties (productie)
+## Het kernidee: alles gaat via migraties (lokaal én productie)
 
-Dit is waar het meestal verwarrend wordt:
+Er is geen *push* meer (`push: false` in `src/payload.config.ts`). Het schema
+verandert **alleen** via migratiebestanden in `src/migrations/`, overal hetzelfde:
 
-- **Lokaal (`npm run dev`)** synchroniseert Payload het databaseschema
-  **automatisch** met je velddefinities (drizzle *push*). Verander je een veld,
-  dan past je lokale database zich bij het opslaan/herstarten aan. Geen migratie
-  nodig om te kunnen werken. (Daarom mag je hier alleen een **lokale** database
-  gebruiken — push tegen een Railway-database breekt daar de deploy.)
-- **Productie (Railway)** doet dat **niet** automatisch — daar draait bij elke
-  deploy `payload migrate`, dat de migratiebestanden in `src/migrations/`
-  toepast. Zonder migratie krijgt productie geen schema (en dan foutmeldingen
-  als *"relation … does not exist"*).
+- **Lokaal én productie** draaien pending migraties bij boot (`prodMigrations`),
+  en op productie draait de deploy sowieso `payload migrate`. Verander je een
+  veld, dan moet je zelf een migratie genereren (`npm run migrate:create`) en
+  toepassen (`npm run migrate`) — anders verandert je database niet.
+- **Waarom niet meer pushen?** Met push voegde dev de kolom zélf toe, waardoor
+  `migrate:create` tegen een al-bijgewerkte database vergeleek en een **lege**
+  migratie schreef. Productie kreeg de kolom dan nooit → 500's. Nu vergelijkt
+  `migrate:create` altijd tegen de laatst-gemigreerde stand → echte wijziging =
+  echte migratie.
 
-Kortom: lokaal mag je vrij rommelen; **voor productie leg je wijzigingen vast in
-een migratie**.
+Kortom: **elke veld-wijziging = een migratie**, ook lokaal.
+
+> **Trek je teamgenoten's werk binnen (`git pull`)?** Draai daarna `npm run migrate`
+> — nieuwe migraties worden niet meer stilzwijgend gepusht.
 
 ---
 
@@ -99,24 +104,29 @@ een migratie**.
 Volledige uitleg: [content-fields.md](content-fields.md). Snelste weg:
 
 ```bash
-npm run new:page        # wizard: velden + registratie + route in één keer
+npm run new:page        # wizard: velden + registratie + route
 ```
 
-Handmatig een veld wijzigen in `src/content/<slug>.ts`? Doe daarna **altijd**:
+De vaste volgorde na elke veld-wijziging (ook via de wizard, en ook lokaal):
 
 ```bash
-npm run generate:types  # types bijwerken (anders kloppen je velden niet)
+npm run generate:types            # types bijwerken (anders kloppen je velden niet)
+npm run migrate:create -- <naam>  # migratie genereren tegen je database
+npm run migrate                   # migratie toepassen op je lokale database
 ```
 
-En vóór je naar productie pusht, als je **content-velden** hebt gewijzigd:
+Daarna committen en pushen:
 
 ```bash
-npm run migrate:create  # genereert een nieuwe migratie tegen het schema
 git add src/migrations && git commit -m "chore: migration" && git push
 ```
 
 > `migrate:create` heeft een Postgres-verbinding nodig (het vergelijkt tegen een
 > database). Je bestaande `DATABASE_URI` uit `.env` volstaat.
+>
+> Krijg je een **lege** migratie terwijl je wél iets wijzigde? Dan is je database
+> al vooruit t.o.v. de laatste migratie (bv. ooit gepusht). Reset de lokale
+> database of gebruik een schone database, en genereer opnieuw.
 
 ## Wat gaat waar heen?
 
@@ -140,9 +150,9 @@ Vergeet bij veld-wijzigingen de migratie niet (zie hierboven).
 
 ## Veelvoorkomende problemen
 
-- **`relation "…" does not exist`** → het schema staat niet in de database die je
-  gebruikt. Lokaal: herstart `npm run dev` (push maakt het aan). Productie:
-  migratie ontbreekt → `npm run migrate:create`, commit, push, redeploy.
+- **`relation "…" does not exist`** of **`column "…" does not exist`** → er is een
+  migratie die je database mist. Genereer/pas toe: `npm run migrate:create -- <naam>`
+  + `npm run migrate` (lokaal), of commit + push + redeploy (productie).
 - **Nieuw veld verschijnt niet** → `npm run generate:types` vergeten, of de
   content-groep niet geregistreerd in `src/content/globals.ts`.
 - **Kan niet met de database verbinden** → `DATABASE_URI` klopt niet. Gebruik de

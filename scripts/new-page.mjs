@@ -212,7 +212,9 @@ ${fields.map(fieldSource).join('\n')}
 
 Volgende stappen:
   1. Pas velden aan in ${rel(contentFile)} (daarna: npm run generate:types)
-  2. Herstart de dev-server (npm run dev) zodat de database-tabel wordt aangemaakt
+  2. Genereer + pas de migratie toe (schema gaat via migraties, niet via push):
+       npm run migrate:create -- add_${slug}
+       npm run migrate
   3. Vul de content in op /admin → Content → ${label}
   4. Bekijk de pagina op /${route}
 `)

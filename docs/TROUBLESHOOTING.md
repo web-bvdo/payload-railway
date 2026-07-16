@@ -13,19 +13,22 @@ verwijderen of wisselen van een plugin** (storage-adapter, UI-plugin) — anders
 
 ## Deploy hangt op *"you've run Payload in dev mode … data loss? (y/N)"*
 
-`payload migrate` ziet bij de start dat het schema via **dev-push** is aangemaakt (er is
-lokaal `npm run dev` tegen déze database gedraaid) en vraagt interactief om bevestiging — in
-een container kan niemand die vraag beantwoorden, dus de deploy blijft hangen.
+Dit hoort met `push: false` (sinds die instelling in `payload.config.ts`) **niet meer voor
+te komen** — er wordt nergens nog dev-gepusht. Kom je het toch tegen, dan is het een
+**legacy** database die ooit met de oude push-modus is aangemaakt: `payload migrate` ziet
+dat het schema via dev-push ontstond en vraagt interactief om bevestiging — in een container
+kan niemand dat, dus de deploy blijft hangen.
 
 **Fix (staging/wegwerp-data):**
 1. Leeg de database:
    ```bash
    psql "<DATABASE_PUBLIC_URL>" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
    ```
-2. Redeploy → `payload migrate` bouwt het schema clean op (geen prompt op een lege DB).
+2. Redeploy → `payload migrate` bouwt het schema clean op uit de migraties (geen prompt op
+   een lege DB).
 
-**Voorkomen:** verbind lokaal **nooit** met een Railway-database. Lokaal = eigen Postgres
-(dev-push); Railway = migraties. Zie [DEVELOPING.md](DEVELOPING.md).
+**Voorkomen:** schema-wijzigingen lopen overal via migraties (`push: false`) — genereer voor
+elke veld-wijziging een migratie. Zie [DEVELOPING.md](DEVELOPING.md).
 
 ## Runtime: `relation "..." does not exist`
 

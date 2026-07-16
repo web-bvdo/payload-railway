@@ -65,12 +65,13 @@ Ze mogen verschillen: map `nieuws/` met `getContent('news')` geeft URL `/nieuws`
 
 ---
 
-## Checklist — altijd deze 4 stappen
+## Checklist — altijd deze stappen
 
 - [ ] **1.** `src/content/<naam>.ts` aangemaakt met de velden.
 - [ ] **2.** Geïmporteerd + toegevoegd aan `contentGlobals` in `src/content/globals.ts`.
 - [ ] **3.** `npm run generate:types` gedraaid.
 - [ ] **4.** Route gemaakt: `src/app/(frontend)/<pad>/page.tsx` die `getContent('<naam>')` aanroept.
+- [ ] **5.** Migratie: `npm run migrate:create -- <naam>` + `npm run migrate` (schema gaat via migraties, niet via push).
 
 ---
 
@@ -143,7 +144,18 @@ export default async function ContactPage() {
 }
 ```
 
-Start `npm run dev`, open **/admin → Content → Contact page**, vul in, en bezoek `/contact`.
+### Stap 5 — Migratie genereren en toepassen
+
+Het schema wordt **niet** meer automatisch gepusht (`push: false`) — je legt de nieuwe
+tabel/kolommen vast in een migratie, lokaal én voor productie:
+
+```bash
+npm run migrate:create -- add_contact   # migratie tegen je Postgres-schema
+npm run migrate                          # toepassen op je lokale database
+```
+
+Start daarna `npm run dev`, open **/admin → Content → Contact page**, vul in, en bezoek
+`/contact`. Commit `src/migrations/` mee zodat productie dezelfde tabel krijgt.
 
 ---
 
@@ -256,7 +268,8 @@ Content die op elke pagina terugkomt zet je in één groep en lees je uit in je 
 | Er verschijnt een rare waarde zoals een datum-timestamp | Je rendert een systeemveld als `c.createdAt` i.p.v. je eigen veld | Gebruik je eigen veldnaam, bv. `{c.title}` |
 | Afbeelding blijft leeg | Veld nog niet ingevuld in `/admin`, of geen `relationTo: 'media'` | Vul in bij admin / controleer het veld |
 | `Cannot import ... server-only` of client-fout | `@/content` geïmporteerd in een client component | `@/content` alleen in server components (geen `'use client'`) |
-| Dev-server vraagt een kolom/tabel te verwijderen (DATA LOSS-prompt) | Global **verwijderd of hernoemd**; de dev-push wil het schema aanpassen | Druk **N** tenzij je die data echt mag verliezen; controleer je velddefinitie. Zie [DEVELOPING.md](DEVELOPING.md) |
+| Nieuw veld/pagina niet in de database (`column … does not exist`) | Migratie niet gegenereerd/toegepast (geen dev-push meer) | `npm run migrate:create -- <naam>` → `npm run migrate`. Zie [DEVELOPING.md](DEVELOPING.md) |
+| `migrate:create` vraagt een kolom/tabel te verwijderen (DATA LOSS-prompt) | Global **verwijderd of hernoemd** | Druk **N** tenzij je die data echt mag verliezen; controleer je velddefinitie. Zie [DEVELOPING.md](DEVELOPING.md) |
 
 ---
 

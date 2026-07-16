@@ -128,6 +128,7 @@ on prompts). Getting a page online is pure structure + code; no content promotio
    ```bash
    npm run generate:types
    npm run migrate:create -- add_<slug>   # against your LOCAL Postgres
+   npm run migrate                        # apply it locally (no more auto-push)
    ```
 5. **Ship:** commit + push. The deploy runs `payload migrate` → the page is live in every
    environment, with its text (from the code defaults).
@@ -152,11 +153,15 @@ Full field-type reference with examples: [docs/content-fields.md](docs/content-f
 
 - **New global not showing / `getContent('x')` errors** → not registered in `globals.ts`,
   or `generate:types` not run.
-- **Restart `npm run dev` after adding a global** — the Postgres adapter pushes the new
-  table to your local dev DB on boot; a running server won't have it yet.
+- **Schema changes go through migrations everywhere** (`push: false` in
+  `payload.config.ts`) — dev no longer auto-pushes. After changing a content field:
+  `npm run generate:types` → `npm run migrate:create -- <name>` → `npm run migrate`. A new
+  global's table appears once you've run/applied its migration (pending migrations also run
+  on boot). Run `npm run migrate` after `git pull` too.
+- **Empty migration despite a real field change?** Your DB is ahead of the last migration
+  (e.g. a leftover from the old push behaviour). Reset/use a clean local DB and regenerate.
 - **Local dev uses a LOCAL Postgres, never a Railway one.** `DATABASE_URI` must point at a
-  local database. In dev, Payload pushes the schema automatically; pushing to a Railway DB
-  breaks that environment's `payload migrate` on deploy. Railway = migrations only.
+  local database. Railway = migrations only, and so is local now.
 - **After adding/removing/swapping a plugin, run `npm run generate:importmap`** and commit —
   otherwise `next build` fails with `Module not found: @payloadcms/…/client`.
 - **Build/deploy failing?** See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
