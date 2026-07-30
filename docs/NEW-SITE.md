@@ -57,6 +57,8 @@ cd klant-x
 npm install
 npm run setup      # maakt .env + PAYLOAD_SECRET
 # DATABASE_URI = de public Postgres-URL van Railway (zie DEVELOPING.md)
+npm run migrate
+npm run seed
 npm run dev        # → localhost:3000, admin op /admin
 ```
 
