@@ -33,11 +33,11 @@
     "payload": "3.85.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "sharp": "0.34.2"
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@tailwindcss/postcss": "^4.3.2",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
