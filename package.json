@@ -18,7 +18,8 @@
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/seed.ts",
-    "new:page": "node scripts/new-page.mjs"
+    "new:page": "node scripts/new-page.mjs",
+    "test:smoke": "playwright test -c playwright.smoke.config.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.85.2",
@@ -35,6 +36,7 @@
     "sharp": "0.34.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4.3.2",
     "@types/node": "^22",
     "@types/react": "19.1.0",
