@@ -44,10 +44,31 @@ extra remote toe te voegen en de losse commit te **cherry-picken** (werkt ook al
    git cherry-pick <commit-hash>     # de losse fix
    npm install                       # als dependencies wijzigden
    npm run generate:types
-   npm run migrate:create            # alleen als de fix content-velden raakt
+   npm run generate:importmap        # als plugins/Payload-versie wijzigden
+   npm run migrate:create -- <naam>  # als de fix content-velden raakt óf Payload upgradet
+   npm run migrate
    npm run typecheck && npm run build
    git push
    ```
+
+### Migraties in de template (core-migraties)
+
+Alles in `src/migrations/` van de template landt via de Railway upstream-update op **elke**
+klant-site en draait daar bij de deploy. Een template-migratie moet dus op élke site-database
+werken. Regels:
+
+- **Alleen core-tabellen** (`users`, `media`, `payload_*`). Nooit `home` of andere
+  content-globals — die verschillen per site; een `ALTER TABLE "home"` breekt de deploy.
+  Gegenereerde migratie dus met de hand inkorten.
+- **Idempotent**: `ADD COLUMN IF NOT EXISTS`, `DROP COLUMN IF EXISTS`, enz.
+- **Geen `.json`-snapshot meecommitten.** `migrate:create` diff't tegen de nieuwste `.json`
+  in de map; een template-snapshot zou de site laten diffen tegen het schema van de
+  template (alle eigen globals "nieuw").
+
+**Gevolg per site (eenmalig na zo'n update):** de volgende `npm run migrate:create` neemt de
+core-wijziging nog een keer op (de snapshot kende 'm niet). Maak die regels in de gegenereerde
+migratie idempotent (`IF NOT EXISTS`) — daarna is de snapshot weer bij. Conflict in
+`src/migrations/index.ts`? Houd beide entries, op timestamp-volgorde.
 
 > `git merge template/main` kan óók, maar alleen als je de klant-repo ooit met `git clone`
 > van de template hebt gemaakt (gedeelde historie). Repo's uit `Use this template` hebben
