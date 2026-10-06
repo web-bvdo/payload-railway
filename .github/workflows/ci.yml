@@ -1,0 +1,146 @@
+# Poortwachter voor automatische updates.
+# - build-and-smoke: build, migraties en smoke tests tegen een echte Postgres.
+# - dependabot-merge: merget Dependabot-PR's (behalve majors) pas als die job groen is.
+# - dependabot-alarm: zet een comment op de PR als een Dependabot-update de tests breekt.
+# Werkt zonder branch protection en dus op elk GitHub-abonnement.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    name: build-and-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      DATABASE_URI: postgres://postgres:postgres@localhost:5432/ci
+      PAYLOAD_SECRET: ci-only-not-a-real-secret-0000000000000000
+      PW_SMOKE_OUTPUT: /tmp/pw-smoke
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: CI-variabelen aanvullen uit .env.example
+        run: bash .github/scripts/ci-env.sh
+
+      - name: Dependencies installeren
+        run: npm ci
+
+      - name: Bekende kwetsbaarheden (informatief)
+        run: |
+          {
+            echo '### npm audit (productie-dependencies)'
+            echo '```'
+            npm audit --omit=dev --audit-level=high 2>&1 | tail -n 60 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Migraties draaien
+        run: npm run migrate
+
+      - name: Build
+        run: npm run build
+
+      - name: Playwright-browser installeren
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npx playwright test -c playwright.smoke.config.ts
+
+      - name: Testresultaten bewaren bij falen
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: smoke-test-results
+          path: /tmp/pw-smoke
+          retention-days: 7
+          if-no-files-found: ignore
+
+  dependabot-merge:
+    name: dependabot-merge
+    needs: build-and-smoke
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Metadata van de update
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mergen (security-updates, patches en minors)
+        if: steps.meta.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
+
+      - name: Major-update laten staan voor review
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          DEPS: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          gh pr comment "$PR_URL" --body "Tests zijn groen, maar dit is een **major**-update ($DEPS). Die wordt niet automatisch gemerged: kijk de release notes na en merge handmatig."
+
+  dependabot-alarm:
+    name: dependabot-alarm
+    needs: build-and-smoke
+    if: failure() && github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Melding op de PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_URL" --body "⚠️ **Deze Dependabot-update breekt de build of de smoke tests** en wordt daarom niet automatisch gemerged. Is het een security-update, dan is de kwetsbaarheid op deze site dus nog niet gepatcht.
+
+          Bekijk de fout: $RUN_URL
+
+          Oplossen kan handmatig, of via de Dependabot-alert in het Security-tabblad met **Assign to Agent**, als je dat abonnement hebt."

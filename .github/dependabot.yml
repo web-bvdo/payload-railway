@@ -1,0 +1,60 @@
+# Dependabot voor een Payload + Next.js site.
+#
+# Security-updates: komen direct binnen zodra er een advisory is (los van het
+# schema hieronder en zonder cooldown), en mergen automatisch bij groene CI.
+# Versie-updates: wekelijks, pas 3 dagen na release (bescherming tegen
+# gecompromitteerde pakketten), gegroepeerd om ruis te beperken.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Amsterdam
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    groups:
+      # Security-updates: samenhangende pakketten in één PR, zodat Payload-
+      # pakketten niet uit de pas raken.
+      payload-security:
+        applies-to: security-updates
+        patterns: ['payload', '@payloadcms/*']
+      nextjs-security:
+        applies-to: security-updates
+        patterns: ['next', '@next/*', 'eslint-config-next']
+      react-security:
+        applies-to: security-updates
+        patterns: ['react', 'react-dom', 'react-server-dom-*']
+
+      # Versie-updates: de eerste groep die past wint.
+      payload:
+        applies-to: version-updates
+        patterns: ['payload', '@payloadcms/*']
+      nextjs:
+        applies-to: version-updates
+        patterns: ['next', '@next/*', 'eslint-config-next']
+      react:
+        applies-to: version-updates
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      overige-minor-en-patch:
+        applies-to: version-updates
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Amsterdam
+    groups:
+      github-actions:
+        patterns: ['*']
