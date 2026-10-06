@@ -20,6 +20,14 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - dependencies
+    # Majors die bewust vastliggen (security-updates komen wél door):
+    ignore:
+      - dependency-name: graphql # Payload vereist graphql ^16
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/node' # volgt .nvmrc (Node 22)
+        update-types: ['version-update:semver-major']
+      - dependency-name: typescript # TS 7 faalt in CI (PR #10); apart oppakken
+        update-types: ['version-update:semver-major']
     groups:
       # Security-updates: samenhangende pakketten in één PR, zodat Payload-
       # pakketten niet uit de pas raken.
