@@ -34,3 +34,14 @@ test('Payload REST-API reageert', async ({ request }) => {
   expect(response.status(), 'statuscode van /api/access').toBe(200)
   expect(response.headers()['content-type'] ?? '').toContain('application/json')
 })
+
+test('SEO: robots.txt en sitemap.xml bestaan, niet-live domein krijgt noindex', async ({ request }) => {
+  const robots = await request.get('/robots.txt')
+  expect(robots.status(), 'statuscode van /robots.txt').toBe(200)
+  expect(await robots.text()).toContain('Disallow: /admin')
+  expect((await request.get('/sitemap.xml')).status(), 'statuscode van /sitemap.xml').toBe(200)
+
+  // CI draait zonder SITE_URL op localhost → nooit indexeerbaar.
+  const home = await request.get('/')
+  expect(home.headers()['x-robots-tag'], 'X-Robots-Tag op /').toContain('noindex')
+})

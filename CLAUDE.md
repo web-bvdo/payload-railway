@@ -63,6 +63,7 @@ docs/
   DEPLOY-RAILWAY.md       ← the Railway setup (Postgres + Bucket + vars) and deploys
   TROUBLESHOOTING.md      ← concrete build/deploy failures we hit, and their fixes
   MAINTAINING.md          ← running this across many client sites + template fixes
+  SEO.md                  ← SEO per page, noindex/SITE_URL, sitemap, redirects, go-live checklist
 ```
 
 **How content flows:** `src/content/<slug>.ts` (fields) → registered in `globals.ts` →
@@ -119,6 +120,7 @@ on prompts). Getting a page online is pure structure + code; no content promotio
    // ...
    { name: 'heroTitle', type: 'text', defaultValue: 'De kop uit het ontwerp' },
    { name: 'intro', type: 'richText', defaultValue: rich('Alinea 1.', 'Alinea 2.') },
+   seoFields, // import { seoFields } from './seo' — SEO-titel/omschrijving in de admin
    ```
 2. **Register** — add the group to `src/content/globals.ts` (the #1 forgotten step).
 3. **Route** — create `src/app/(frontend)/<url>/page.tsx`; read editable bits with
@@ -149,6 +151,14 @@ The text-in-code vs admin-content model, and promoting editor content (staging �
 
 Full field-type reference with examples: [docs/content-fields.md](docs/content-fields.md).
 
+## SEO (every page)
+
+Every page exports `generateMetadata()` returning `seoMetadata(c.seo, { title, description,
+path })` from `@/content/seo`, so each page has its own title and description. One `<h1>`
+per page. The layout sets `lang="nl"`, `metadataBase: siteUrl` and a real title
+template. Only the domain in `SITE_URL` is indexable; everything else is noindex. Details
+and the go-live checklist: [docs/SEO.md](docs/SEO.md).
+
 ## Gotchas
 
 - **New global not showing / `getContent('x')` errors** → not registered in `globals.ts`,
@@ -178,7 +188,8 @@ This template is the **upstream** for many client sites. Keep the boundary clean
 
 | Template CORE (comes from upstream — avoid editing per site) | Site-specific (per client — safe to change) |
 |---|---|
-| `src/content/index.tsx` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
+| `src/content/index.tsx`, `src/content/seo.ts` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
+| `src/app/robots.ts`, `src/app/sitemap.ts` | `redirects.json` (old URLs → new, per site) |
 | `scripts/*` | `src/app/(frontend)/**` (routes, layout, CSS) |
 | `src/payload.config.ts`, `next.config.ts`, configs | your Tailwind classes / design |
 | `src/collections/*` (unless you extend) | `.env` (never committed) |

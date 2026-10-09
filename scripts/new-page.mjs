@@ -179,6 +179,8 @@ function generate({ slug, route, label, fields }) {
     contentFile,
     `import type { GlobalConfig } from 'payload'
 
+import { seoFields } from './seo'
+
 // Bewerkbare content voor de ${slug}-pagina.
 // Alle veldtypes + voorbeelden: docs/content-fields.md.
 export const ${camel} = {
@@ -188,6 +190,7 @@ export const ${camel} = {
   admin: { group: 'Content' },
   fields: [
 ${fields.map(fieldSource).join('\n')}
+    seoFields,
   ],
 } satisfies GlobalConfig
 `,
@@ -254,6 +257,13 @@ function pageSource(slug, pascal, fields) {
     .join('\n')
 
   return `import { ${imports.join(', ')} } from '@/content'
+import { seoMetadata } from '@/content/seo'
+
+// Titel + omschrijving voor Google. Admin (SEO-tab) wint van deze defaults.
+export async function generateMetadata() {
+  const c = await getContent('${slug}')
+  return seoMetadata(c.seo, { title: '${pascal}', description: 'TODO: omschrijving voor Google', path: '/${route}' })
+}
 
 // Jij bepaalt de layout; Payload levert de teksten/afbeeldingen.
 export default async function ${pascal}Page() {

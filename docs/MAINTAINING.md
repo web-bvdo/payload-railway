@@ -138,6 +138,8 @@ Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
 - [ ] **Admin-wachtwoord gewijzigd** na de eerste login (niet het `.env`-default laten staan).
 - [ ] **Backups** van de Postgres-database én de Bucket, per site (Railway biedt DB-backups).
 - [ ] **Node-versie** volgens `.nvmrc` (`nvm use`).
+- [ ] **Bij livegang: `SITE_URL`** op production plus redirects van de oude site. Zonder
+      `SITE_URL` staat de hele site op noindex. Zie [SEO.md](SEO.md).
 
 ## Toekomst: core als npm-package
 
