@@ -38,7 +38,7 @@ export function Img({ field, fallback, alt, width, height, ...rest }: ImgProps) 
     return (
       <NextImage
         src={m.url}
-        alt={alt ?? m.alt ?? ''}
+        alt={m.alt || alt || ''}
         width={width ?? m.width ?? 1200}
         height={height ?? m.height ?? 800}
         {...rest}

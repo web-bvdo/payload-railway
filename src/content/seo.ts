@@ -63,17 +63,13 @@ export function seoMetadata(
   const title = seo?.title || d.title
   const description = seo?.description || d.description
   const image = seo?.image && typeof seo.image === 'object' ? seo.image.url : null
+  // Geen eigen openGraph tenzij er een afbeelding is: Next vervangt de openGraph van de
+  // layout (siteName, standaardafbeelding) per pagina in zijn geheel. og:title/description
+  // vallen bij social media terug op <title> en de description.
   return {
     title,
     description,
     alternates: { canonical: d.path },
-    openGraph: {
-      title,
-      description,
-      url: d.path,
-      type: 'website',
-      locale: 'nl_NL',
-      ...(image && { images: [image] }),
-    },
+    ...(image && { openGraph: { images: [image] } }),
   }
 }
