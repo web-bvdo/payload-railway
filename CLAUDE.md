@@ -14,7 +14,7 @@ Content is **field-level, ACF-style** (like WordPress ACF): you define named fie
 pull them into hand-built pages by key with `getContent(...)`. It is **not** a block /
 page-builder — that was deliberately removed. Do not reintroduce one.
 
-Stack: Next.js 15 (App Router) · Payload CMS 3 · Postgres (Railway) · React 19 · TypeScript.
+Stack: Next.js 16 (App Router) · Payload CMS 3 · Postgres (Railway) · React 19 · TypeScript.
 
 ## Golden rules
 
