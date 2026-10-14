@@ -98,5 +98,5 @@ Full guide with examples: **[docs/content-fields.md](docs/content-fields.md)**.
 
 ## Stack
 
-Next.js 15 (App Router) · Payload CMS 3 · Postgres · React 19 · TypeScript. Hosted on
+Next.js 16 (App Router) · Payload CMS 3 · Postgres · React 19 · TypeScript. Hosted on
 Railway (Postgres service + Bucket for media).
