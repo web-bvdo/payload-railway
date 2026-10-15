@@ -3,6 +3,8 @@
   "build": { "builder": "NIXPACKS" },
   "deploy": {
     "startCommand": "npm run migrate && npm start",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 600,
     "restartPolicyType": "ON_FAILURE"
   }
 }

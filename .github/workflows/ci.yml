@@ -1,6 +1,7 @@
 # Poortwachter voor automatische updates.
 # - build-and-smoke: build, migraties en smoke tests tegen een echte Postgres.
 # - dependabot-merge: merget Dependabot-PR's (behalve majors) pas als die job groen is.
+# - fleet-merge: merget PR's van het fleet-script (branch fleet/*) pas als die job groen is.
 # - dependabot-alarm: zet een comment op de PR als een Dependabot-update de tests breekt.
 # Werkt zonder branch protection en dus op elk GitHub-abonnement.
 name: CI
@@ -123,6 +124,22 @@ jobs:
           DEPS: ${{ steps.meta.outputs.dependency-names }}
         run: |
           gh pr comment "$PR_URL" --body "Tests zijn groen, maar dit is een **major**-update ($DEPS). Die wordt niet automatisch gemerged: kijk de release notes na en merge handmatig."
+
+  fleet-merge:
+    name: fleet-merge
+    needs: build-and-smoke
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'fleet/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Mergen (fleet-PR met groene CI)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
 
   dependabot-alarm:
     name: dependabot-alarm
