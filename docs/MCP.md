@@ -39,6 +39,12 @@ databasekolommen geven, dus een migratie per site. Zie `payload.config.ts`.
 
 **Intrekken:** verwijder de key (of zet *Enable API Key* uit) onder MCP → API Keys.
 
+## Een wijziging terugdraaien
+
+Elke pagina, en elke collection die via MCP open staat, bewaart zijn laatste 50 versies.
+Open de pagina in `/admin` → tab **Versions** → kies een versie → **Restore**. Dat werkt voor
+wijzigingen van Claude en van mensen.
+
 ## Goed om te weten
 
 - Keys horen bij één omgeving (staging of productie) en reizen niet mee met `npm run promote`.

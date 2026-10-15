@@ -3,7 +3,7 @@ import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
-import { buildConfig, type Access } from 'payload'
+import { buildConfig, type Access, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
@@ -40,6 +40,15 @@ const ownKeysAccess = {
   unlock: ownKeys,
 } satisfies Record<string, Access>
 
+// History: every content page, and every collection open to MCP, keeps its last
+// 50 versions — admin → Versions → Restore undoes an edit (also one by Claude).
+// No drafts: the site keeps reading the latest save. A page/collection can set
+// its own `versions` to override. Each one gets a `_<slug>_v` table, so adding a
+// page still needs `npm run migrate:create` as usual.
+const HISTORY = 50
+const withHistory = (c: CollectionConfig): CollectionConfig =>
+  c.slug in mcpCollections ? { versions: { maxPerDoc: HISTORY }, ...c } : c
+
 export default buildConfig({
   admin: {
     user: Users.slug,
@@ -47,8 +56,8 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Media, Users],
-  globals: contentGlobals,
+  collections: [Media, Users].map(withHistory),
+  globals: contentGlobals.map((g) => ({ versions: { max: HISTORY }, ...g })),
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
