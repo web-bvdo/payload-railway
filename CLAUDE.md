@@ -33,7 +33,7 @@ Stack: Next.js 16 (App Router) · Payload CMS 3 · Postgres (Railway) · React 1
 7. **Never commit** `.env` or `/media`. Secrets and runtime uploads are per-site
    and gitignored. The database is a Railway Postgres service — nothing DB-related
    lives in the repo except `src/migrations/`.
-8. **Respect the core / site-specific split** (see below) so template updates merge cleanly.
+8. **Respect the core / site-specific split** (see below) so template updates apply cleanly.
 
 ## Architecture
 
@@ -179,13 +179,15 @@ and the go-live checklist: [docs/SEO.md](docs/SEO.md).
   (importmap, the `payload migrate` "data loss? (y/N)" hang, `relation … does not exist`,
   "GitHub Repo not found").
 - **Never `git reset --hard` a customized client site** onto the template — it wipes the
-  site's work. Use `cherry-pick`. See [docs/MAINTAINING.md](docs/MAINTAINING.md).
+  site's work. Template fixes reach sites via `fleet sync` (web-bvdo/fleet) or a single
+  `cherry-pick`. See [docs/MAINTAINING.md](docs/MAINTAINING.md).
 - **Image renders empty** → field not filled in `/admin`, or missing `relationTo: 'media'`.
 
 ## Core vs site-specific (important for updates)
 
 This template is the **upstream** for many client sites. Keep the boundary clean so
-`git merge upstream/main` rarely conflicts:
+`fleet sync` (web-bvdo/fleet cherry-picks new template commits into every site) rarely
+conflicts:
 
 | Template CORE (comes from upstream — avoid editing per site) | Site-specific (per client — safe to change) |
 |---|---|
@@ -197,7 +199,13 @@ This template is the **upstream** for many client sites. Keep the boundary clean
 | `docs/*`, `CLAUDE.md` | |
 
 `src/content/home.ts` and `(frontend)/page.tsx` are template **defaults** that each site
-replaces — expect to edit them, and don't be surprised if they conflict on an upstream
-merge (keep your version).
+replaces — expect to edit them, and don't be surprised if they conflict on a sync (keep
+your version).
+
+**Commit convention in this template** (it decides what reaches the sites): `fleet sync`
+skips dependency bumps and merge commits. So commit a bump always as `chore(deps): …`
+(package.json + lockfile), and a migration or code change that belongs to it as a separate
+`fix:`/`feat:` commit — otherwise it never arrives at the sites. Squash titles follow the
+same rule.
 
 See [docs/MAINTAINING.md](docs/MAINTAINING.md) for the full multi-site workflow.

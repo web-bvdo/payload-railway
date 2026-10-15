@@ -52,8 +52,21 @@ Postgres-service + de app-service neer en koppelt de database automatisch.
 5. **Publish**. Iedereen die de template deployt krijgt Postgres + Bucket + app,
    automatisch gekoppeld.
 
-Het start-commando (`npm run migrate && npm start`) staat in `railway.json` —
-niks in te stellen.
+### Start-commando en healthcheck
+
+Beide staan in `railway.json` — niks in te stellen:
+
+- **Start-commando** `npm run migrate && npm start`: eerst de migraties, dan de
+  server.
+- **Healthcheck** op `/`, timeout 600 s. Zonder healthcheck vervangt Railway de
+  draaiende versie zodra de nieuwe container start; faalt daarna de migratie (of
+  de start), dan is de site plat. Mét healthcheck blijft de oude versie online tot
+  de nieuwe een `200` geeft op `/`; faalt de nieuwe, dan blijft de oude gewoon
+  staan. De 600 s geven een trage migratie de ruimte.
+
+Bestaande sites hebben `railway.json` verwijderd en dezelfde waarden in de
+service-instellingen van Railway staan (Settings → Deploy). Dat is even goed,
+zolang ze hetzelfde zeggen.
 
 ## Een staging-omgeving (optioneel)
 

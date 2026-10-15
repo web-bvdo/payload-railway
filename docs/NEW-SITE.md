@@ -11,6 +11,7 @@ keer een **eigen kopie-repo** en daarin werk je.
 | **Template-repo** (deze) | de blauwdruk. Nooit per klant aanpassen. → `web-bvdo/payload-railway` |
 | **Klant-repo** | een kopie die je één keer maakt. **Hierin ontwikkel je.** → bv. `web-bvdo/klant-x` |
 | **Railway-project** | deployt de **klant-repo** (niet de template) |
+| **fleet** | register van alle sites + template-updates in bulk → `web-bvdo/fleet` |
 
 Waarom? De template is de upstream voor ál je sites. Wijzig je 'm per klant, dan
 lopen bugfixes en updates door elkaar. Eén blauwdruk, veel losse kopieën.
@@ -49,6 +50,13 @@ Snelste route (behoudt de automatische koppeling van Postgres + Bucket + vars):
 > `klant-x`. Geef die toegang bij het verbinden; anders trigger je een deploy via
 > **Settings → Check for updates → Update**.
 
+> **Start-commando en healthcheck.** De template levert `railway.json` mee (start
+> `npm run migrate && npm start`, healthcheck op `/`, timeout 600 s); een nieuwe site
+> krijgt dat bestand dus vanzelf. Bestaande sites hebben het verwijderd en hebben
+> dezelfde waarden in de service-instellingen van Railway staan (Settings → Deploy).
+> Beide zijn goed, zolang ze hetzelfde zeggen. Waarom de healthcheck:
+> [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md#start-commando-en-healthcheck).
+
 ## Stap 3 — Ontwikkel lokaal in de klant-repo
 
 ```bash
@@ -65,19 +73,40 @@ npm run dev        # → localhost:3000, admin op /admin
 Volledige dagelijkse workflow (database kiezen, velden toevoegen, migraties,
 naar productie): **[DEVELOPING.md](DEVELOPING.md)**.
 
----
+## Stap 4 — Registreer de site in fleet
 
-## Template-updates later doorvoeren (optioneel)
+[web-bvdo/fleet](https://github.com/web-bvdo/fleet) is het register van alle sites.
+Zonder dit blok krijgt de site geen template-updates (`fleet sync`) en staat hij
+niet in de wekelijkse status. Voeg aan `sites.json` toe:
 
-Fix je iets in de **template** dat ook naar bestaande klantsites moet? Omdat elke
-klant-repo van de template is afgeleid, kun je de template als extra remote
-toevoegen en wijzigingen cherry-picken/mergen:
-
-```bash
-git remote add template https://github.com/web-bvdo/payload-railway.git
-git fetch template
-git cherry-pick <commit>     # of: git merge template/main  (let op conflicten)
+```json
+{
+  "name": "klant-x",
+  "repo": "web-bvdo/klant-x",
+  "url": "https://<service>.up.railway.app",
+  "railway": { "project": "<id>", "service": "<id>", "environment": "<id>" },
+  "templateBase": "<sha>",
+  "since": "2026-10-15"
+}
 ```
 
-Doe dit per klant-repo — nooit andersom (klantwerk hoort niet in de template).
-Zie ook [MAINTAINING.md](MAINTAINING.md).
+- `railway`: de id's van project, app-service en environment (Railway-dashboard →
+  Settings, of via de Railway-MCP).
+- `templateBase`: de template-commit waarvan de site gemaakt is. Direct bij het
+  aanmaken ophalen, vóór de template weer verandert:
+  ```bash
+  gh api repos/web-bvdo/payload-railway/commits/main -q .sha
+  ```
+
+Commit + push in de fleet-repo. De eerste `./fleet sync` zet daarna `.template-sha`
+in de site-repo.
+
+---
+
+## Template-updates later doorvoeren
+
+Fix je iets in de **template** dat ook naar bestaande klantsites moet? Dat doet
+`./fleet sync` in de fleet-repo: het cherry-pickt de nieuwe template-commits in
+elke geregistreerde site en opent per site een PR die de CI zelf merget bij groen.
+Nooit andersom (klantwerk hoort niet in de template). Zie
+[MAINTAINING.md](MAINTAINING.md).

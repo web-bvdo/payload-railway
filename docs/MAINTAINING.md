@@ -14,6 +14,8 @@ template naar álle bestaande sites krijgt.
 
 - **Deze repo** = de gedeelde basis: Payload-config, de content-helpers, scripts, docs.
 - **Elke klant-site** = een kopie met eigen content-groepen, routes, styling, database + Bucket.
+- **[web-bvdo/fleet](https://github.com/web-bvdo/fleet)** = de laag erboven: `sites.json` als
+  register van alle sites, en het `fleet`-script voor status en bulk-acties (`sync`, `run`).
 
 De sleutel tot pijnloze updates is de **core/site-specifiek-scheiding** (zie de tabel in
 [CLAUDE.md](../CLAUDE.md#core-vs-site-specific-important-for-updates)). Klantwerk zit in
@@ -22,40 +24,101 @@ De sleutel tot pijnloze updates is de **core/site-specifiek-scheiding** (zie de 
 ## Nieuwe klant-site opzetten
 
 Zie **[NEW-SITE.md](NEW-SITE.md)** — de volledige flow: kopie van de template maken
-(`Use this template`), op Railway zetten, Railway op de kopie laten wijzen, lokaal
-ontwikkelen. Kort samengevat: je werkt **nooit in deze template**, maar per klant in een
-eigen kopie-repo.
+(`Use this template`), op Railway zetten, Railway op de kopie laten wijzen, registreren in
+`sites.json` van fleet, lokaal ontwikkelen. Kort samengevat: je werkt **nooit in deze
+template**, maar per klant in een eigen kopie-repo.
 
 ## Een template-fix naar alle sites brengen
 
-Omdat elke klant-repo een **kopie** van de template is, haal je fixes op door de template als
-extra remote toe te voegen en de losse commit te **cherry-picken** (werkt ook als de repo via
-`Use this template` is gemaakt, dus zonder gedeelde git-historie):
+Elke klant-repo is een **kopie** van de template zonder gedeelde git-historie, dus fixes gaan
+per commit (cherry-pick). Dat doet `fleet sync` voor alle sites tegelijk:
 
-1. **Fix in de template** (deze repo), commit, en tag een versie:
+1. **Fix in de template** (deze repo): PR, groene CI, mergen naar `main`.
+2. **In de fleet-repo:**
    ```bash
-   git commit -am "fix: <omschrijving>"
-   git tag v1.1.0 && git push --tags
+   ./fleet sync                 # alle sites, PR per site
+   ./fleet sync -o klant-a      # alleen deze site(s), kommagescheiden
    ```
-2. **Per klant-site** de fix binnenhalen:
+
+Per site leest `sync` `.template-sha` uit de site-repo (de laatste template-commit die de site
+heeft; zolang dat bestand er nog niet is `templateBase` uit `sites.json`), cherry-pickt in een
+verse checkout alle template-commits daarna, zet `.template-sha` bij en opent een PR op een
+`fleet/*`-branch. De CI van de site merget die PR zelf zodra build, migraties en smoke tests
+groen zijn. Twee soorten commits slaat `sync` over:
+
+- **Dependency-bumps** (`chore(deps…`-commits en alles van Dependabot). Die doet Dependabot per
+  site al, en een lockfile cherry-picken conflicteert altijd.
+- **Merge-commits.**
+
+### Commit-conventie in de template
+
+- Een dependency-bump altijd als **`chore(deps): …`** committen (`package.json` + lockfile).
+- Een migratie of codewijziging die bij zo'n bump hoort in een **aparte `fix:`-/`feat:`-commit**.
+  Zit die in de `chore(deps)`-commit, dan komt hij niet mee via `sync`.
+- Squash-mergen is prima; de squash-titel volgt dezelfde regel.
+
+### Bij een conflict
+
+`sync` stopt voor die site, houdt wat al wél is toegepast, zet `.template-sha` op de laatste
+gelukte commit en meldt in de PR welke commit handwerk is. Die ene commit haal je zelf binnen,
+in een **verse clone** van de site:
+
+```bash
+git remote add template https://github.com/web-bvdo/payload-railway.git   # eenmalig
+git fetch template
+git cherry-pick <commit-hash>     # conflicten oplossen: hou de klant-versie
+npm install                       # als dependencies wijzigden
+npm run generate:types
+npm run generate:importmap        # als plugins/Payload-versie wijzigden
+npm run migrate:create -- <naam>  # als de fix content-velden raakt
+npm run migrate
+npm run typecheck && npm run build
+echo <commit-hash> > .template-sha   # anders probeert de volgende sync 'm opnieuw
+git push
+```
+
+Conflicten zitten normaal alleen in `home.ts` / `(frontend)/page.tsx` → hou de klant-versie.
+De volgende `./fleet sync` gaat vanaf `.template-sha` verder.
+
+**Sterk afgeweken site?** Als een klant-site ver van de template staat (eigen content-model,
+localization, veel eigen pagina's), loopt `sync` steeds op conflicten. Pas dan alleen de losse
+infra-wijziging met de hand toe en zet `.template-sha` door. Gebeurt dat vaak, zie
+[Toekomst](#toekomst-core-als-npm-package).
+
+⚠️ **Pas op met verouderde lokale checkouts.** Na een repo-rename of een kopie kun je meerdere
+mappen hebben die naar dezelfde URL wijzen, waarvan één nog de **oude historie** bevat. Push
+daar niet vanuit — dat zet de repo terug. `fleet` werkt daarom altijd in verse checkouts onder
+`~/.cache/fleet/`; doe bij handwerk hetzelfde. (Dit ging in de praktijk al bijna mis.)
+
+### Payload-upgrade met migratie: `fleet run`
+
+Dependabot bumpt Payload per site, maar een upgrade die een **core-migratie** nodig heeft moet
+versie én migratie in één PR krijgen. Dat is een `fleet run`: een shell-commando in elke site,
+PR bij wijziging (ook op een `fleet/*`-branch, dus automatisch gemerged bij groen).
+
+1. Upgrade eerst in de template: `chore(deps): …` met de versies, `fix: …` met de migratie
+   (zie [core-migraties](#migraties-in-de-template-core-migraties)).
+2. Dan fleet-breed, met de versies en de migratie uit stap 1:
    ```bash
-   git remote add template https://github.com/web-bvdo/payload-railway.git   # eenmalig
-   git fetch template
-   git cherry-pick <commit-hash>     # de losse fix
-   npm install                       # als dependencies wijzigden
-   npm run generate:types
-   npm run generate:importmap        # als plugins/Payload-versie wijzigden
-   npm run migrate:create -- <naam>  # als de fix content-velden raakt óf Payload upgradet
-   npm run migrate
-   npm run typecheck && npm run build
-   git push
+   ./fleet run -m "chore(deps): Payload 3.90.2 + migratie" -- '
+     npm i --save-exact payload@3.90.2 @payloadcms/db-postgres@3.90.2 @payloadcms/next@3.90.2 \
+       @payloadcms/plugin-mcp@3.90.2 @payloadcms/richtext-lexical@3.90.2 @payloadcms/ui@3.90.2 \
+       @payloadcms/storage-s3@3.90.2 &&
+     cp "$FLEET_TEMPLATE"/src/migrations/20261006_141717_payload_3_90.ts src/migrations/ &&
+     node "$FLEET_TEMPLATE"/scripts/migrations-index.mjs src/migrations
+   '
    ```
+
+`$FLEET_TEMPLATE` is een verse checkout van de template, `$FLEET_SITE` de sitenaam;
+`scripts/migrations-index.mjs` bouwt `src/migrations/index.ts` opnieuw uit de map. Hetzelfde
+recept voor een kritieke CVE die niet op Dependabot kan wachten:
+`./fleet run -m "fix(deps): next 16.4.1 (CVE-…)" -- 'npm i --save-exact next@16.4.1'`.
 
 ### Migraties in de template (core-migraties)
 
-Alles in `src/migrations/` van de template landt via de Railway upstream-update op **elke**
-klant-site en draait daar bij de deploy. Een template-migratie moet dus op élke site-database
-werken. Regels:
+Alles in `src/migrations/` van de template landt via `fleet sync` (of een `fleet run`) op
+**elke** klant-site en draait daar bij de deploy. Een template-migratie moet dus op élke
+site-database werken. Regels:
 
 - **Alleen core-tabellen** (`users`, `media`, `payload_*`). Nooit `home` of andere
   content-globals — die verschillen per site; een `ALTER TABLE "home"` breekt de deploy.
@@ -68,44 +131,16 @@ werken. Regels:
 **Gevolg per site (eenmalig na zo'n update):** de volgende `npm run migrate:create` neemt de
 core-wijziging nog een keer op (de snapshot kende 'm niet). Maak die regels in de gegenereerde
 migratie idempotent (`IF NOT EXISTS`) — daarna is de snapshot weer bij. Conflict in
-`src/migrations/index.ts`? Houd beide entries, op timestamp-volgorde.
-
-> `git merge template/main` kan óók, maar alleen als je de klant-repo ooit met `git clone`
-> van de template hebt gemaakt (gedeelde historie). Repo's uit `Use this template` hebben
-> een verse historie → een merge geeft *"unrelated histories"*; gebruik dan cherry-pick.
-> Conflicten zitten normaal alleen in `home.ts` / `(frontend)/page.tsx` → hou de klant-versie.
-
-**Sterk afgeweken site?** Als een klant-site ver van de template staat (eigen content-model,
-localization, veel eigen pagina's), doe dan **geen** volledige merge — dat geeft een berg
-conflicten. Pas alleen de losse infra-wijziging met de hand toe (of cherry-pick die ene
-commit). De upstream-merge is voor sites die dicht bij de template blijven.
-
-### Een verse kopie in één keer gelijktrekken
-
-Heeft de klant-repo nog **geen eigen werk** (net gemaakt met `Use this template`)? Dan trek
-je 'm zo naar de laatste template-staat, zonder per commit te cherry-picken:
-
-```bash
-git clone https://github.com/<org>/<klant-repo>.git && cd <klant-repo>   # altijd VERS clonen
-git remote add template https://github.com/web-bvdo/payload-railway.git
-git fetch template
-git checkout template/main -- .    # tree gelijk aan de template
-git add -A && git commit -m "chore: sync latest template" && git push
-```
-
-⚠️ **Pas op met verouderde lokale checkouts.** Na een repo-rename of een kopie kun je
-meerdere mappen hebben die naar dezelfde URL wijzen, waarvan één nog de **oude historie**
-bevat. Push daar niet vanuit — dat zet de repo terug. Clone altijd vers voordat je zoiets
-doet. (Dit ging in de praktijk al bijna mis.)
+`src/migrations/index.ts`? `node scripts/migrations-index.mjs src/migrations` bouwt 'm opnieuw.
 
 ## ⚠️ NOOIT doen bij een klant-site
 
 Deze twee hebben in de praktijk al bijna data + code gekost:
 
-- **Nooit `git reset --hard upstream/main`** (of `origin/main` van de template) in een
+- **Nooit `git reset --hard template/main`** (of `origin/main` van de template) in een
   klant-site. `reset --hard` gooit ál het site-specifieke werk weg en vervangt het door de
-  kale template. Gebruik altijd `merge` of `cherry-pick`. `reset --hard` is alleen veilig
-  in een lege, verse kopie.
+  kale template. Gebruik altijd `fleet sync` of een losse `cherry-pick`. `reset --hard` is
+  alleen veilig in een lege, verse kopie.
 - **Nooit `y` drukken op de "You're about to delete … table / DATA LOSS WARNING"-prompt**
   bij `npm run dev`. Die verschijnt als de **code niet meer bij de database past** (meestal
   omdat de code is teruggezet/veranderd terwijl de database nog de oude content heeft).
@@ -114,9 +149,15 @@ Deze twee hebben in de praktijk al bijna data + code gekost:
 
 ## Versiebeheer
 
-- Tag elke template-release (`v1.0.0`, `v1.1.0`, …) met [semver](https://semver.org/).
-- Noteer per klant-site op welke versie hij zit (bv. in de site-README of een
-  `TEMPLATE_VERSION`-bestand), zodat je weet wie welke fixes mist.
+Geen tags of versienummers; de template-commit is de versie.
+
+- **`.template-sha`** in elke site-repo = de laatste template-commit die de site heeft.
+  `fleet sync` zet 'm bij; na handmatig cherry-picken zet je 'm zelf door.
+- **[`sites.json`](https://github.com/web-bvdo/fleet/blob/main/sites.json)** in fleet = het
+  register: repo, URL, Railway-id's en `templateBase` (de template-commit waarvan de site is
+  gemaakt, het startpunt zolang `.template-sha` er nog niet is).
+- **`./fleet status`** toont per site de Payload-/Next-versie, CI, open Dependabot-PR's en
+  hoeveel template-commits de site achterloopt. Draait elke maandag en meldt rood in Teams.
 
 ## Productie-checklist (cruciaal bij meerdere sites)
 
@@ -126,6 +167,8 @@ per deployment verschillen:
 Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
 [NEW-SITE.md](NEW-SITE.md). In het kort, per site:
 
+- [ ] **Geregistreerd in `sites.json`** van web-bvdo/fleet. Anders krijgt de site geen
+      template-updates en staat hij niet in de wekelijkse status.
 - [ ] **Eigen Railway-project per site.** Deel nooit database, Bucket of secret tussen klanten.
 - [ ] **Unieke `PAYLOAD_SECRET` per site.** De template genereert 'm automatisch bij een
       deploy (`${{secret(48)}}`); lokaal regelt `npm run setup` dit.
@@ -135,6 +178,8 @@ Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
       blijven zo bewaard en gedeeld tussen dev/prod.
 - [ ] **Schema via migrations in productie** (geen dev-push). `npm run migrate:create`
       lokaal, committen; het start-commando draait `payload migrate` bij elke deploy.
+- [ ] **Healthcheck op `/`** (600 s) in `railway.json` of de service-instellingen, zodat een
+      mislukte migratie de draaiende versie niet vervangt. Zie [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md#start-commando-en-healthcheck).
 - [ ] **Admin-wachtwoord gewijzigd** na de eerste login (niet het `.env`-default laten staan).
 - [ ] **Backups** van de Postgres-database én de Bucket, per site (Railway biedt DB-backups).
 - [ ] **Node-versie** volgens `.nvmrc` (`nvm use`).
@@ -143,8 +188,8 @@ Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
 
 ## Toekomst: core als npm-package
 
-Zodra je veel sites hebt, worden git-merges omslachtig. Dan is de volgende stap: de core
+Loopt `fleet sync` bij veel sites steeds op conflicten, dan is de volgende stap: de core
 (`src/content/index.tsx`, gedeelde config, scripts) verhuizen naar een privé npm-package
-(bv. `@bureauvdo/payload-core`). Sites doen dan `npm update @bureauvdo/payload-core` i.p.v.
-mergen. Meer opzetwerk, maar veel schonere updates op schaal. Doen wanneer het aantal sites
-(of de merge-pijn) dat rechtvaardigt — nu nog niet nodig.
+(bv. `@web-bvdo/payload-core`). Sites doen dan `npm update @web-bvdo/payload-core` i.p.v.
+cherry-picken. Meer opzetwerk, maar veel schonere updates op schaal. Doen wanneer het aantal
+sites (of de conflict-pijn) dat rechtvaardigt — nu nog niet nodig.
