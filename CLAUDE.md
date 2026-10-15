@@ -64,6 +64,7 @@ docs/
   TROUBLESHOOTING.md      ← concrete build/deploy failures we hit, and their fixes
   MAINTAINING.md          ← running this across many client sites + template fixes
   SEO.md                  ← SEO per page, noindex/SITE_URL, sitemap, redirects, go-live checklist
+  MCP.md                  ← colleagues edit copy via Claude Code (/api/mcp, per-person API keys)
 ```
 
 **How content flows:** `src/content/<slug>.ts` (fields) → registered in `globals.ts` →

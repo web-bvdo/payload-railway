@@ -94,7 +94,8 @@ Full guide with examples: **[docs/content-fields.md](docs/content-fields.md)**.
 5. **[docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md)** — the Railway setup (Postgres + Bucket + vars) and deploys.
 6. **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — concrete build/deploy failures and their fixes.
 7. **[docs/MAINTAINING.md](docs/MAINTAINING.md)** — many client sites + pushing template fixes to them.
-8. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
+8. **[docs/MCP.md](docs/MCP.md)** — let colleagues edit copy via Claude Code (MCP).
+9. **[CLAUDE.md](CLAUDE.md)** — full working guide for building in the template.
 
 ## Stack
 
