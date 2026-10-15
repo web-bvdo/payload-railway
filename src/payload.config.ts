@@ -3,29 +3,51 @@ import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
-import { buildConfig } from 'payload'
+import { buildConfig, type Access, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { contentGlobals } from './content/globals'
+import { mcpCollections } from './content/mcp'
 import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 // MCP (/api/mcp): colleagues edit copy through Claude Code. Every valid API key
-// may read and update all content globals — nothing else: no collections, no
-// delete. Keys are per person and revocable in the admin under MCP → API Keys.
-// See docs/MCP.md.
-// ponytail: all-or-nothing per key. Per-global checkboxes would add DB columns
+// may read and update all content globals, plus the collections listed in
+// src/content/mcp.ts — nothing else, never delete. Keys are per person and
+// revocable in the admin under MCP → API Keys. See docs/MCP.md.
+// ponytail: all-or-nothing per key. Per-entity checkboxes would add DB columns
 // that differ per site (= a migration per site); add them only when a key must
 // be limited to some pages.
 const globalSlugs = contentGlobals.map((g) => g.slug)
 const contentAccess = { find: true, update: true }
+const collectionEntries = Object.entries(mcpCollections)
 // Same key name the plugin uses internally (its toCamelCase).
 const camel = (s: string) => s.replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''))
+// Each user sees and manages only their own keys. Plugin 3.90 does this itself;
+// 3.85 (still on some sites) has no access rules at all, so it comes from here.
+// ponytail: drop once every site runs Payload >= 3.90.
+const ownKeys: Access = ({ req }) => (req.user ? { user: { equals: req.user.id } } : false)
+const ownKeysAccess = {
+  create: ({ req }) => Boolean(req.user),
+  read: ownKeys,
+  update: ownKeys,
+  delete: ownKeys,
+  unlock: ownKeys,
+} satisfies Record<string, Access>
+
+// History: every content page, and every collection open to MCP, keeps its last
+// 50 versions — admin → Versions → Restore undoes an edit (also one by Claude).
+// No drafts: the site keeps reading the latest save. A page/collection can set
+// its own `versions` to override. Each one gets a `_<slug>_v` table, so adding a
+// page still needs `npm run migrate:create` as usual.
+const HISTORY = 50
+const withHistory = (c: CollectionConfig): CollectionConfig =>
+  c.slug in mcpCollections ? { versions: { maxPerDoc: HISTORY }, ...c } : c
 
 export default buildConfig({
   admin: {
@@ -34,8 +56,8 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Media, Users],
-  globals: contentGlobals,
+  collections: [Media, Users].map(withHistory),
+  globals: contentGlobals.map((g) => ({ versions: { max: HISTORY }, ...g })),
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -62,15 +84,18 @@ export default buildConfig({
   sharp,
   plugins: [
     mcpPlugin({
+      collections: Object.fromEntries(collectionEntries.map(([slug, ops]) => [slug, { enabled: ops }])),
       globals: Object.fromEntries(globalSlugs.map((slug) => [slug, { enabled: contentAccess }])),
-      // Drop the per-global checkboxes so the schema is identical on every site.
+      // Drop the per-entity checkboxes so the schema is identical on every site.
       overrideApiKeyCollection: (collection) => ({
         ...collection,
+        access: collection.access ?? ownKeysAccess,
         fields: collection.fields.filter((field) => field.type !== 'collapsible'),
       }),
       overrideAuth: async (_req, getDefaultAccess) => ({
         ...(await getDefaultAccess()),
         ...Object.fromEntries(globalSlugs.map((slug) => [camel(slug), contentAccess])),
+        ...Object.fromEntries(collectionEntries.map(([slug, ops]) => [camel(slug), ops])),
       }),
     }),
     // Media on an S3-compatible bucket (Railway Bucket / Cloudflare R2), so

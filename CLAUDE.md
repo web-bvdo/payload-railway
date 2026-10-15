@@ -196,7 +196,7 @@ conflicts:
 | `scripts/*` | `src/app/(frontend)/**` (routes, layout, CSS) |
 | `src/payload.config.ts`, `next.config.ts`, configs | your Tailwind classes / design |
 | `src/collections/*` (unless you extend) | `.env` (never committed) |
-| `docs/*`, `CLAUDE.md` | |
+| `docs/*`, `CLAUDE.md` | `src/content/mcp.ts` (collections open for MCP) |
 
 `src/content/home.ts` and `(frontend)/page.tsx` are template **defaults** that each site
 replaces — expect to edit them, and don't be surprised if they conflict on a sync (keep

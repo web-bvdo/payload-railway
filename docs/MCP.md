@@ -6,12 +6,24 @@ De wijziging staat direct live: geen deploy, geen Git- of Railway-toegang nodig.
 
 ## Wat een key mag
 
-Elke geldige key mag **alle content-pagina's (globals) lezen en bijwerken**, en verder niets:
-geen gebruikers, geen media, niets verwijderen. Een nieuwe pagina (`npm run new:page`) komt
-er vanzelf bij.
+Elke geldige key mag **alle content-pagina's (globals) lezen en bijwerken**. Een nieuwe pagina
+(`npm run new:page`) komt er vanzelf bij.
 
-Bewust alles-of-niets per key: vinkjes per pagina zouden per site andere databasekolommen
-geven, dus een migratie per site. Zie `payload.config.ts`.
+**Collections** (bv. losse projecten of producten) staan standaard dicht. Per site zet je ze
+open in `src/content/mcp.ts`:
+
+```ts
+export const mcpCollections = {
+  projects: { find: true, create: true, update: true },
+  reviews: { find: true, update: true },
+}
+```
+
+Verwijderen kan nooit via MCP. Zet nooit persoonsgegevens open (formulierinzendingen,
+gebruikers). Geen migratie nodig: alleen de config verandert.
+
+Bewust alles-of-niets per key: vinkjes per pagina of collection zouden per site andere
+databasekolommen geven, dus een migratie per site. Zie `payload.config.ts`.
 
 ## Een collega toegang geven
 
@@ -26,6 +38,12 @@ geven, dus een migratie per site. Zie `payload.config.ts`.
    ```
 
 **Intrekken:** verwijder de key (of zet *Enable API Key* uit) onder MCP → API Keys.
+
+## Een wijziging terugdraaien
+
+Elke pagina, en elke collection die via MCP open staat, bewaart zijn laatste 50 versies.
+Open de pagina in `/admin` → tab **Versions** → kies een versie → **Restore**. Dat werkt voor
+wijzigingen van Claude en van mensen.
 
 ## Goed om te weten
 

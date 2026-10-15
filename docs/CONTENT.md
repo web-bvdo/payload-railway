@@ -19,6 +19,15 @@ editor in productie aanpast.
 
 > Lokaal voer je alleen wegwerp-testcontent in (je lokale database) — die promoveer je niet.
 
+## Historie (versies)
+
+Elke content-pagina bewaart zijn laatste 50 versies (`payload.config.ts`), net als elke
+collection die via MCP open staat. Terugzetten: pagina openen in `/admin` → **Versions** →
+**Restore**. Er zijn geen drafts: wat je opslaat staat direct live.
+
+Elke pagina krijgt daarvoor een eigen `_<slug>_v`-tabel. Een nieuwe pagina vraagt dus,
+zoals altijd, om `npm run migrate:create`.
+
 ## Media: deel één Bucket tussen staging en productie
 
 De simpelste opzet: geef staging **en** productie dezelfde `S3_*`-variabelen (dezelfde
