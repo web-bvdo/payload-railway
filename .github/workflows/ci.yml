@@ -114,7 +114,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge "$PR_URL" --squash --delete-branch
+        # "Base branch was modified": een andere PR is net gemerged. Dependabot laten rebasen
+        # → nieuwe CI-run → deze job probeert het opnieuw.
+        run: gh pr merge "$PR_URL" --squash --delete-branch || gh pr comment "$PR_URL" --body "@dependabot rebase"
 
       - name: Major-update laten staan voor review
         if: steps.meta.outputs.update-type == 'version-update:semver-major'
@@ -139,7 +141,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge "$PR_URL" --squash --delete-branch
+        # Base gewijzigd door een andere merge → branch bijwerken → nieuwe CI-run → opnieuw.
+        run: gh pr merge "$PR_URL" --squash --delete-branch || gh pr update-branch "$PR_URL"
 
   dependabot-alarm:
     name: dependabot-alarm
