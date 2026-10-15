@@ -3,7 +3,7 @@ import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
-import { buildConfig } from 'payload'
+import { buildConfig, type Access } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
@@ -26,6 +26,17 @@ const globalSlugs = contentGlobals.map((g) => g.slug)
 const contentAccess = { find: true, update: true }
 // Same key name the plugin uses internally (its toCamelCase).
 const camel = (s: string) => s.replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''))
+// Each user sees and manages only their own keys. Plugin 3.90 does this itself;
+// 3.85 (still on some sites) has no access rules at all, so it comes from here.
+// ponytail: drop once every site runs Payload >= 3.90.
+const ownKeys: Access = ({ req }) => (req.user ? { user: { equals: req.user.id } } : false)
+const ownKeysAccess = {
+  create: ({ req }) => Boolean(req.user),
+  read: ownKeys,
+  update: ownKeys,
+  delete: ownKeys,
+  unlock: ownKeys,
+} satisfies Record<string, Access>
 
 export default buildConfig({
   admin: {
@@ -66,6 +77,7 @@ export default buildConfig({
       // Drop the per-global checkboxes so the schema is identical on every site.
       overrideApiKeyCollection: (collection) => ({
         ...collection,
+        access: collection.access ?? ownKeysAccess,
         fields: collection.fields.filter((field) => field.type !== 'collapsible'),
       }),
       overrideAuth: async (_req, getDefaultAccess) => ({
