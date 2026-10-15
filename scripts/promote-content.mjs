@@ -6,7 +6,7 @@
 // Copies CONTENT only. The auth/system tables are never touched, so the target
 // keeps its own admin users, sessions and migration history:
 //   users, users_sessions, payload_migrations, payload_preferences(+_rels),
-//   payload_locked_documents(+_rels), payload_kv
+//   payload_locked_documents(+_rels), payload_kv, payload_mcp_api_keys
 //
 // Schema must already exist in the target (it does: `payload migrate` runs on
 // every Railway deploy). This only moves the data rows.
@@ -32,6 +32,7 @@ const SKIP = [
   'payload_locked_documents',
   'payload_locked_documents_rels',
   'payload_kv',
+  'payload_mcp_api_keys', // per-person MCP keys, tied to this environment's users
 ]
 
 function arg(name) {

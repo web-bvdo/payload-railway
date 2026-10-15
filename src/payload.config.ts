@@ -1,4 +1,5 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
@@ -13,6 +14,18 @@ import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// MCP (/api/mcp): colleagues edit copy through Claude Code. Every valid API key
+// may read and update all content globals — nothing else: no collections, no
+// delete. Keys are per person and revocable in the admin under MCP → API Keys.
+// See docs/MCP.md.
+// ponytail: all-or-nothing per key. Per-global checkboxes would add DB columns
+// that differ per site (= a migration per site); add them only when a key must
+// be limited to some pages.
+const globalSlugs = contentGlobals.map((g) => g.slug)
+const contentAccess = { find: true, update: true }
+// Same key name the plugin uses internally (its toCamelCase).
+const camel = (s: string) => s.replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''))
 
 export default buildConfig({
   admin: {
@@ -48,6 +61,18 @@ export default buildConfig({
   }),
   sharp,
   plugins: [
+    mcpPlugin({
+      globals: Object.fromEntries(globalSlugs.map((slug) => [slug, { enabled: contentAccess }])),
+      // Drop the per-global checkboxes so the schema is identical on every site.
+      overrideApiKeyCollection: (collection) => ({
+        ...collection,
+        fields: collection.fields.filter((field) => field.type !== 'collapsible'),
+      }),
+      overrideAuth: async (_req, getDefaultAccess) => ({
+        ...(await getDefaultAccess()),
+        ...Object.fromEntries(globalSlugs.map((slug) => [camel(slug), contentAccess])),
+      }),
+    }),
     // Media on an S3-compatible bucket (Railway Bucket / Cloudflare R2), so
     // uploads made in the admin persist and are shared across dev/prod — no
     // volume, no repo/volume conflict. Auto-disabled locally when S3_BUCKET is
