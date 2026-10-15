@@ -28,6 +28,8 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: typescript # TS 7 faalt in CI (PR #10); apart oppakken
         update-types: ['version-update:semver-major']
+      - dependency-name: nodemailer # @payloadcms/email-nodemailer vereist nodemailer ^9
+        update-types: ['version-update:semver-major']
     groups:
       # Security-updates: samenhangende pakketten in één PR, zodat Payload-
       # pakketten niet uit de pas raken.
