@@ -50,12 +50,17 @@ Snelste route (behoudt de automatische koppeling van Postgres + Bucket + vars):
 > `klant-x`. Geef die toegang bij het verbinden; anders trigger je een deploy via
 > **Settings → Check for updates → Update**.
 
-> **Start-commando en healthcheck.** De template levert `railway.json` mee (start
-> `npm run migrate && npm start`, healthcheck op `/`, timeout 600 s); een nieuwe site
-> krijgt dat bestand dus vanzelf. Bestaande sites hebben het verwijderd en hebben
-> dezelfde waarden in de service-instellingen van Railway staan (Settings → Deploy).
-> Beide zijn goed, zolang ze hetzelfde zeggen. Waarom de healthcheck:
-> [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md#start-commando-en-healthcheck).
+4. **Start-commando en healthcheck** (start `npm run migrate && npm start`,
+   healthcheck op `/`, timeout 600 s). Die zet de Railway-template niet; ze komen uit
+   `.railway/railway.ts` in de klant-repo. Na het omzetten van de bron, in `klant-x`
+   gekoppeld met `railway link`:
+
+   ```bash
+   node scripts/railway-iac.mjs && railway config plan && railway config apply
+   ```
+
+   Commit daarna `.railway/`. Zonder deze stap start de site zonder migraties. Zie
+   [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md#start-commando-en-healthcheck).
 
 ## Stap 3 — Ontwikkel lokaal in de klant-repo
 
