@@ -178,7 +178,8 @@ Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
       blijven zo bewaard en gedeeld tussen dev/prod.
 - [ ] **Schema via migrations in productie** (geen dev-push). `npm run migrate:create`
       lokaal, committen; het start-commando draait `payload migrate` bij elke deploy.
-- [ ] **Healthcheck op `/`** (600 s) in `railway.json` of de service-instellingen, zodat een
+- [ ] **Start-commando en healthcheck op `/`** (600 s) in `.railway/railway.ts` én toegepast
+      (`railway config plan` zegt "up to date"), zodat een
       mislukte migratie de draaiende versie niet vervangt. Zie [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md#start-commando-en-healthcheck).
 - [ ] **Admin-wachtwoord gewijzigd** na de eerste login (niet het `.env`-default laten staan).
 - [ ] **Backups** van de Postgres-database én de Bucket, per site (Railway biedt DB-backups).

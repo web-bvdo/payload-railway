@@ -41,7 +41,7 @@ Postgres-service + de app-service neer en koppelt de database automatisch.
 3. Voeg drie services toe op het canvas:
    - **Database → PostgreSQL** (Railway's kant-en-klare Postgres).
    - **Bucket** (S3-compatible object-storage voor de media).
-   - **GitHub Repo** → deze repo. Nixpacks detecteert Next.js.
+   - **GitHub Repo** → deze repo. Railpack detecteert Next.js.
 4. Bij de app-service, onder **Variables**, koppel database + bucket:
    - `DATABASE_URI` = `${{Postgres.DATABASE_URL}}`  ← referentie naar de Postgres-service
    - `PAYLOAD_SECRET` = genereer één (zie hieronder). Zet 'm als template-variabele
@@ -54,7 +54,8 @@ Postgres-service + de app-service neer en koppelt de database automatisch.
 
 ### Start-commando en healthcheck
 
-Beide staan in `railway.json` — niks in te stellen:
+Beide staan per site in `.railway/railway.ts` (Railway Infrastructure as Code) en
+op de app-service in Railway:
 
 - **Start-commando** `npm run migrate && npm start`: eerst de migraties, dan de
   server.
@@ -64,9 +65,27 @@ Beide staan in `railway.json` — niks in te stellen:
   de nieuwe een `200` geeft op `/`; faalt de nieuwe, dan blijft de oude gewoon
   staan. De 600 s geven een trage migratie de ruimte.
 
-Bestaande sites hebben `railway.json` verwijderd en dezelfde waarden in de
-service-instellingen van Railway staan (Settings → Deploy). Dat is even goed,
-zolang ze hetzelfde zeggen.
+`railway.json` (Config as Code) is vervangen: Railway leest dat bestand na
+2026-12-01 niet meer. Let op het verschil: Railway leest `.railway/` **niet** bij
+een deploy. Het bestand is de bron; `railway config apply` zet de waarden op de
+service. Wijzig ze dus niet alleen in het dashboard, anders wist de volgende apply
+ze weer.
+
+Instellen of bijwerken, in een site-map die met `railway link` aan het eigen
+project hangt:
+
+```bash
+node scripts/railway-iac.mjs   # .railway/railway.ts maken (railway config pull) of bijwerken
+railway config plan            # verwacht: alleen start/healthcheck, nooit een delete
+railway config apply
+```
+
+Het script haalt bij ontbreken eerst de huidige Railway-staat op als code
+(Postgres, Bucket, volume, variabelen als `preserve()`), zet daarna start-commando
+en healthcheck op de service `payload-railway` en verwijdert een oude
+`railway.json`. De waarden staan bovenin het script. Het bestand beschrijft het
+héle project: wat je eruit weghaalt, verwijdert `apply` in Railway. De template
+zelf heeft daarom geen `.railway/railway.ts`; die is per site.
 
 ## Een staging-omgeving (optioneel)
 
