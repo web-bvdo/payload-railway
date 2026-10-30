@@ -107,42 +107,59 @@ if (!yes) {
   process.exit(1)
 }
 
-// Optionally clear the target's content tables so a re-promote replaces cleanly.
+// Same schema on both sides? Otherwise the copy fails halfway (a column the target doesn't
+// have yet). Compare the applied migrations first and stop before writing anything.
+async function migrationsOf(url) {
+  const c = new pg.Client({ connectionString: url })
+  await c.connect()
+  try {
+    const { rows } = await c.query('select name from payload_migrations where batch > 0')
+    return new Set(rows.map((r) => r.name))
+  } finally {
+    await c.end()
+  }
+}
+const [src, dst] = await Promise.all([migrationsOf(from), migrationsOf(to)])
+const onlySrc = [...src].filter((n) => !dst.has(n))
+const onlyDst = [...dst].filter((n) => !src.has(n))
+if (onlySrc.length || onlyDst.length) {
+  console.error(
+    'Refusing to run: source and target have different migrations.\n' +
+      (onlySrc.length ? `  only on source: ${onlySrc.join(', ')}\n` : '') +
+      (onlyDst.length ? `  only on target: ${onlyDst.join(', ')}\n` : '') +
+      'Deploy the same code to both environments first.',
+  )
+  process.exit(1)
+}
+
+// One transaction for reset + copy: if anything fails, the target is exactly as it was.
+// The lock tables are cleared too (they reference media/users and only hold edit locks).
+let reset_sql = ''
 if (reset) {
   const t = new pg.Client({ connectionString: to })
   await t.connect()
-  const { rows } = await t.query(
-    `select tablename from pg_tables where schemaname='public'`,
-  )
-  const tables = rows
-    .map((r) => r.tablename)
-    .filter((name) => !SKIP.includes(name))
-  if (tables.length) {
-    await t.query('SET session_replication_role = replica') // skip FK checks
-    await t.query(
-      `TRUNCATE ${tables.map((x) => `"${x}"`).join(', ')} RESTART IDENTITY`,
-    )
-    console.log(`Truncated ${tables.length} content tables on target.`)
-  }
+  const { rows } = await t.query(`select tablename from pg_tables where schemaname='public'`)
   await t.end()
+  const keep = SKIP.filter((n) => !n.startsWith('payload_locked_documents'))
+  const tables = rows.map((r) => r.tablename).filter((name) => !keep.includes(name))
+  if (tables.length) reset_sql = `TRUNCATE ${tables.map((x) => `"${x}"`).join(', ')} RESTART IDENTITY;`
 }
 
-// Type-perfect data copy. session_replication_role=replica lets rows load in
-// pg_dump's order without FK errors.
 const excludes = SKIP.flatMap((t) => ['--exclude-table-data', `public.${t}`])
-const dump = spawnSync(
-  'sh',
-  [
-    '-c',
-    `( echo "SET session_replication_role = replica;"; "${pgDump}" --data-only --no-owner --no-privileges ${excludes
-      .map((e) => (e.startsWith('--') ? e : `'${e}'`))
-      .join(' ')} "${from}" ) | psql --set ON_ERROR_STOP=on "${to}"`,
-  ],
-  { stdio: 'inherit' },
-)
-
+const dumpArgs = ['--data-only', '--no-owner', '--no-privileges', ...excludes, from]
+const dump = spawnSync(pgDump, dumpArgs, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 1024 })
 if (dump.status !== 0) {
-  console.error('\nPromote failed.')
+  console.error(dump.stderr)
+  console.error('\nPromote failed while reading the source. Target untouched.')
   process.exit(dump.status || 1)
 }
-console.log('\nDone. Content promoted. (Admin users on the target were left untouched.)')
+const load = spawnSync('psql', ['--single-transaction', '--set', 'ON_ERROR_STOP=on', '--quiet', to], {
+  input: `SET session_replication_role = replica;\n${reset_sql}\n${dump.stdout}`,
+  stdio: ['pipe', 'inherit', 'inherit'],
+  maxBuffer: 1024 * 1024 * 1024,
+})
+if (load.status !== 0) {
+  console.error('\nPromote failed. Nothing was written: the target is unchanged (single transaction).')
+  process.exit(load.status || 1)
+}
+console.log(`\nDone. Content promoted${reset ? ' (target content replaced)' : ''}. Admin users on the target were left untouched.`)

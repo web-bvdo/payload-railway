@@ -13,6 +13,7 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "migrate": "cross-env NODE_OPTIONS=--no-deprecation payload migrate",
     "migrate:create": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:create",
+    "schema:check": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/schema-drift.ts",
     "promote": "node scripts/promote-content.mjs",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
@@ -32,6 +33,7 @@
     "graphql": "^16.8.1",
     "next": "16.4.2",
     "payload": "3.92.0",
+    "pg": "8.20.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "sharp": "0.35.5"

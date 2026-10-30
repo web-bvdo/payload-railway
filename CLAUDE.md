@@ -197,6 +197,12 @@ conflicts:
 | `src/payload.config.ts`, `next.config.ts`, configs | your Tailwind classes / design |
 | `src/collections/*` (unless you extend) | `.env` (never committed) |
 | `docs/*`, `CLAUDE.md` | `src/content/mcp.ts` (collections open for MCP) |
+| | `CLAUDE.site.md` (agent rules for this site, e.g. the SEO requirements) |
+| Generated, never hand-merged: `src/payload-types.ts`, `src/app/(payload)/admin/importMap.js`, `src/migrations/index.ts` | `src/migrations/*` (your own migrations + `.json` snapshots) |
+
+**Site-specific agent rules go in `CLAUDE.site.md`, never in this file.** This file is core
+and changes with every template update; `CLAUDE.site.md` is imported below and belongs to the
+site, so both stay conflict-free.
 
 **Head code** (cookiebanner, later GTM/Consent Mode) goes in `<SiteHead />`
 (`src/content/head.tsx`), never directly in the layout: the layout is site-specific, so a
@@ -207,9 +213,14 @@ replaces — expect to edit them, and don't be surprised if they conflict on a s
 your version).
 
 **Commit convention in this template** (it decides what reaches the sites): `fleet sync`
-skips dependency bumps and merge commits. So commit a bump always as `chore(deps): …`
-(package.json + lockfile), and a migration or code change that belongs to it as a separate
-`fix:`/`feat:` commit — otherwise it never arrives at the sites. Squash titles follow the
-same rule.
+skips merge commits, Dependabot commits and pure version bumps (a commit that only touches
+`package.json`/`package-lock.json`). A `chore(deps): …` commit that also changes other files
+(dependabot.yml, tsconfig, a migration) arrives without its version bumps. Dependencies on
+the sites are Dependabot's job; a Payload upgrade with a migration goes out with `fleet run`.
+
+Before committing a schema change: `npm run schema:check` against a freshly migrated
+database (CI runs it too).
 
 See [docs/MAINTAINING.md](docs/MAINTAINING.md) for the full multi-site workflow.
+
+@CLAUDE.site.md

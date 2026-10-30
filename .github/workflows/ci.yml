@@ -75,6 +75,21 @@ jobs:
       - name: Migraties draaien
         run: npm run migrate
 
+      # Past het schema na alle migraties bij de config? Vangt een veldwijziging zonder
+      # migratie, en een Payload-update (Dependabot) die een schemawijziging vraagt.
+      # Zonder deze stap merget dependabot-merge zo'n update en faalt productie pas bij gebruik.
+      - name: Schema gelijk aan de config
+        run: npm run schema:check
+
+      - name: Gegenereerde bestanden actueel
+        run: |
+          npm run -s generate:types && npm run -s generate:importmap
+          if ! git diff --quiet -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'; then
+            git diff --stat -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
+            echo "::error::payload-types.ts of importMap.js is verouderd. Draai npm run generate:types && npm run generate:importmap en commit."
+            exit 1
+          fi
+
       - name: Build
         run: npm run build
 
@@ -100,6 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -116,7 +132,14 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         # "Base branch was modified": een andere PR is net gemerged. Dependabot laten rebasen
         # → nieuwe CI-run → deze job probeert het opnieuw.
-        run: gh pr merge "$PR_URL" --squash --delete-branch || gh pr comment "$PR_URL" --body "@dependabot rebase"
+        # Merges met GITHUB_TOKEN starten geen push-run op main (GitHub-regel); daarom
+        # CI op main hier expliciet starten, anders zegt "CI main" in fleet status niets.
+        run: |
+          if gh pr merge "$PR_URL" --squash --delete-branch; then
+            gh workflow run ci.yml --ref main -R "${{ github.repository }}"
+          else
+            gh pr comment "$PR_URL" --body "@dependabot rebase"
+          fi
 
       - name: Major-update laten staan voor review
         if: steps.meta.outputs.update-type == 'version-update:semver-major'
@@ -130,19 +153,28 @@ jobs:
   fleet-merge:
     name: fleet-merge
     needs: build-and-smoke
-    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'fleet/')
+    # Alleen branches uit deze repo (geen fork) en alleen fleet/ — fleet-review/ wacht op een mens.
+    if: >-
+      github.event_name == 'pull_request' && startsWith(github.head_ref, 'fleet/')
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
       - name: Mergen (fleet-PR met groene CI)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        # Base gewijzigd door een andere merge → branch bijwerken → nieuwe CI-run → opnieuw.
-        run: gh pr merge "$PR_URL" --squash --delete-branch || gh pr update-branch "$PR_URL"
+        # Een push met GITHUB_TOKEN start geen nieuwe CI-run, dus `gh pr update-branch` als
+        # herkansing bleef hangen zonder checks. Mislukt de merge (conflict), dan blijft de PR
+        # open en zichtbaar in `fleet status`. Na een merge: CI op main expliciet starten.
+        run: |
+          gh pr merge "$PR_URL" --squash --delete-branch
+          gh workflow run ci.yml --ref main
 
   dependabot-alarm:
     name: dependabot-alarm
