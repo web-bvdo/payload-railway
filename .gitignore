@@ -16,8 +16,9 @@ next-env.d.ts
 .env.*
 !.env.example
 
-# NB: /media is intentionally NOT ignored — photos are public site assets and
-# ship with the repo. They serve from ./media on every deploy (no volume needed).
+# Local uploads (no S3_BUCKET) land in ./media. Never commit them: production media
+# lives in the Bucket; design images that ship with the code go in public/images/.
+/media
 
 # stray local SQLite (only if someone runs the old adapter) — never commit.
 payload.db

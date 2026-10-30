@@ -64,10 +64,9 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   db: postgresAdapter({
-    // One Postgres for everyone. Locally, DATABASE_URI points at the Railway
-    // dev database (its public connection string) so the whole team shares the
-    // same dev data — no seeding, no import/export. On Railway, the Postgres
-    // service injects DATABASE_URL; we read that too. See docs/DEPLOY-RAILWAY.md.
+    // Locally DATABASE_URI points at your own LOCAL Postgres (never a Railway
+    // database). On Railway the Postgres service injects DATABASE_URL; we read
+    // that too. See docs/DEVELOPING.md and docs/DEPLOY-RAILWAY.md.
     pool: {
       connectionString: process.env.DATABASE_URI || process.env.DATABASE_URL,
     },
