@@ -105,6 +105,9 @@ export default buildConfig({
     // R2/MinIO-style endpoints. See docs/DEPLOY-RAILWAY.md.
     s3Storage({
       enabled: Boolean(process.env.S3_BUCKET),
+      // Ook zonder S3 de kolommen die de plugin aan media toevoegt (_objectKey, prefix) in het
+      // schema, anders mist een lokaal gegenereerde migratie ze en faalt productie op media.
+      alwaysInsertFields: true,
       collections: { media: true },
       bucket: process.env.S3_BUCKET || '',
       config: {
