@@ -11,6 +11,8 @@ Wat de template regelt, en wat je per site moet doen.
 | `/sitemap.xml`: alle vaste routes onder `(frontend)`, automatisch bij de build | `src/app/sitemap.ts` |
 | 301-redirects van oude URL's | `redirects.json` |
 | Velden voor SEO-titel, -omschrijving en social-afbeelding in de admin, plus een helper voor de metadata | `src/content/seo.ts` |
+| **Cookiebanner (Usercentrics)** alleen op het echte domein, als `USERCENTRICS_ID` gezet is | `src/content/consent.tsx` |
+| Consent-facade voor embeds (Calendly, YouTube, kaarten): laadt pas met toestemming voor die dienst | `src/content/ConsentEmbed.tsx` |
 
 ## Per site
 
@@ -30,6 +32,43 @@ Wat de template regelt, en wat je per site moet doen.
 3. **Eén `<h1>` per pagina** en een `alt`-tekst bij elke afbeelding.
 4. **Dynamische routes** (`[slug]`) voeg je toe aan `extra` in `src/app/sitemap.ts`.
 
+## Cookiebanner (Usercentrics)
+
+Elke klant heeft een eigen Usercentrics-configuratie (settings-ID) met eigen teksten,
+styling en diensten. De template laadt alleen de banner; de inhoud regel je in
+Usercentrics.
+
+1. **Railway:** zet `USERCENTRICS_ID=<settings-ID>` op de **production**-omgeving. De
+   banner laadt alleen als ook `SITE_URL` gezet is en het request op dat domein
+   binnenkomt. Railway-previews, staging en localhost krijgen niets (geen banner, geen
+   tracking). Testen kan dus alleen op het live domein.
+2. **Layout:** `<Usercentrics />` (uit `@/content/consent`) staat in de `<head>` van
+   `src/app/(frontend)/layout.tsx`. Heeft je site een eigen layout, zet hem daar ook in.
+   Komt er later GTM met Consent Mode v2, dan zet je de consent-default (`denied`) in de
+   `<head>` vóór `<Usercentrics />`.
+3. **Embeds:** voeg elke dienst die je embedt (bv. Calendly, YouTube Video, Google Maps)
+   toe in de Usercentrics-configuratie van de klant, en render de embed met
+   `ConsentEmbed`. `service` moet gelijk zijn aan de dienstnaam in Usercentrics
+   (hoofdletters maken niet uit):
+   ```tsx
+   import { ConsentEmbed } from '@/content/ConsentEmbed'
+
+   <ConsentEmbed
+     service="Calendly"
+     src="https://calendly.com/klant/kennismaking?hide_gdpr_banner=1"
+     title="Plan een afspraak"
+     height={700}
+     buttonLabel="Agenda laden"
+     track="afspraak-calendly-laden"
+   />
+   ```
+   Al toestemming → de iframe laadt meteen. Anders een facade met knop; een klik accepteert
+   alleen die dienst. Zonder Usercentrics (geen ID, ander domein) is het een gewone
+   klik-facade. De facade is bewust kaal: geef `className` mee en style hem per site.
+4. **Footer:** een link waarmee bezoekers hun keuze wijzigen, bv.
+   `<button onClick={() => window.UC_UI?.showSecondLayer()}>Cookie-instellingen</button>`
+   (in een client component), of de privacy-knop van Usercentrics zelf.
+
 ## Livegang (checklist)
 
 - [ ] Custom domein gekoppeld in Railway.
@@ -48,3 +87,5 @@ Wat de template regelt, en wat je per site moet doen.
 - [ ] Controle: `curl -sI https://www.klant.nl | grep -i robots`. Dit moet **leeg** zijn. En
       `https://www.klant.nl/sitemap.xml` moet alle pagina's tonen.
 - [ ] Sitemap ingediend in Google Search Console.
+- [ ] Cookiebanner: `USERCENTRICS_ID` gezet op production en de banner verschijnt op het
+      live domein (zie *Cookiebanner* hierboven).

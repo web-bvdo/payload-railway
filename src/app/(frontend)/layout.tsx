@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import React from 'react'
 
+import { Usercentrics } from '@/content/consent'
 import { siteUrl } from '@/content/seo'
 import './styles.css'
 
@@ -23,6 +24,10 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
 
   return (
     <html lang="nl">
+      <head>
+        {/* Cookiebanner; alleen met USERCENTRICS_ID op het live domein. Zie docs/SEO.md. */}
+        <Usercentrics />
+      </head>
       <body>
         <main>{children}</main>
       </body>

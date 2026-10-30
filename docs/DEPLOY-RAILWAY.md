@@ -131,6 +131,7 @@ dus prod krijgt de migratie automatisch.
 | `PAYLOAD_SECRET` | unieke secret (`node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`) |
 | `S3_BUCKET` / `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | referenties naar de **Bucket**-service (`${{Bucket.…}}`) |
 | `S3_REGION` | `auto` (optioneel; default is `auto`) |
+| `USERCENTRICS_ID` | alleen production: settings-ID van de cookiebanner van de klant (zie [SEO.md](SEO.md#cookiebanner-usercentrics)) |
 
 ## Media (en waarom database + opslag los staan)
 

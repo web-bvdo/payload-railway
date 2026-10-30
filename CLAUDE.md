@@ -191,7 +191,7 @@ conflicts:
 
 | Template CORE (comes from upstream — avoid editing per site) | Site-specific (per client — safe to change) |
 |---|---|
-| `src/content/index.tsx`, `src/content/seo.ts` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
+| `src/content/index.tsx`, `src/content/seo.ts`, `src/content/consent.tsx`, `src/content/ConsentEmbed.tsx` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
 | `src/app/robots.ts`, `src/app/sitemap.ts` | `redirects.json` (old URLs → new, per site) |
 | `scripts/*` | `src/app/(frontend)/**` (routes, layout, CSS) |
 | `src/payload.config.ts`, `next.config.ts`, configs | your Tailwind classes / design |
