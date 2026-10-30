@@ -57,9 +57,20 @@ groen zijn. Twee soorten commits slaat `sync` over:
   Zit die in de `chore(deps)`-commit, dan komt hij niet mee via `sync`.
 - Squash-mergen is prima; de squash-titel volgt dezelfde regel.
 
+**Template-commits raken geen site-specifieke bestanden** (`src/app/(frontend)/**`,
+`home.ts`, `redirects.json`; zie de tabel in `CLAUDE.md`). Moet een feature iets in de
+layout of een pagina zetten, maak dan een core-component in `src/content/` en laat de site
+die eenmalig inbouwen. Voorbeeld: head-code komt in `<SiteHead />` (`src/content/head.tsx`),
+niet in de layout.
+
 ### Bij een conflict
 
-`sync` stopt voor die site, houdt wat al wél is toegepast, zet `.template-sha` op de laatste
+`sync` lost een paar conflicten zelf op: in site-specifieke bestanden (`src/app/(frontend)/**`,
+`src/content/home.ts`, `redirects.json`) blijft de site-versie staan, en de PR noemt die
+bestanden zodat je kunt nalopen of de template-wijziging er met de hand in moet. In `docs/*`
+wint de template; bestanden die de site verwijderd heeft blijven weg.
+
+Bij elk ander conflict stopt `sync` voor die site, houdt wat al wél is toegepast, zet `.template-sha` op de laatste
 gelukte commit en meldt in de PR welke commit handwerk is. Die ene commit haal je zelf binnen,
 in een **verse clone** van de site:
 
@@ -77,8 +88,7 @@ echo <commit-hash> > .template-sha   # anders probeert de volgende sync 'm opnie
 git push
 ```
 
-Conflicten zitten normaal alleen in `home.ts` / `(frontend)/page.tsx` → hou de klant-versie.
-De volgende `./fleet sync` gaat vanaf `.template-sha` verder.
+Hou bij twijfel de klant-versie. De volgende `./fleet sync` gaat vanaf `.template-sha` verder.
 
 **Sterk afgeweken site?** Als een klant-site ver van de template staat (eigen content-model,
 localization, veel eigen pagina's), loopt `sync` steeds op conflicten. Pas dan alleen de losse

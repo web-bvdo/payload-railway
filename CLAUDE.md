@@ -191,12 +191,16 @@ conflicts:
 
 | Template CORE (comes from upstream — avoid editing per site) | Site-specific (per client — safe to change) |
 |---|---|
-| `src/content/index.tsx`, `src/content/seo.ts`, `src/content/consent.tsx`, `src/content/ConsentEmbed.tsx` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
+| `src/content/index.tsx`, `src/content/seo.ts`, `src/content/consent.tsx`, `src/content/ConsentEmbed.tsx`, `src/content/head.tsx` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
 | `src/app/robots.ts`, `src/app/sitemap.ts` | `redirects.json` (old URLs → new, per site) |
 | `scripts/*` | `src/app/(frontend)/**` (routes, layout, CSS) |
 | `src/payload.config.ts`, `next.config.ts`, configs | your Tailwind classes / design |
 | `src/collections/*` (unless you extend) | `.env` (never committed) |
 | `docs/*`, `CLAUDE.md` | `src/content/mcp.ts` (collections open for MCP) |
+
+**Head code** (cookiebanner, later GTM/Consent Mode) goes in `<SiteHead />`
+(`src/content/head.tsx`), never directly in the layout: the layout is site-specific, so a
+template change there conflicts on every site.
 
 `src/content/home.ts` and `(frontend)/page.tsx` are template **defaults** that each site
 replaces — expect to edit them, and don't be surprised if they conflict on a sync (keep

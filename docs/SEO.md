@@ -11,7 +11,7 @@ Wat de template regelt, en wat je per site moet doen.
 | `/sitemap.xml`: alle vaste routes onder `(frontend)`, automatisch bij de build | `src/app/sitemap.ts` |
 | 301-redirects van oude URL's | `redirects.json` |
 | Velden voor SEO-titel, -omschrijving en social-afbeelding in de admin, plus een helper voor de metadata | `src/content/seo.ts` |
-| **Cookiebanner (Usercentrics)** alleen op het echte domein, als `USERCENTRICS_ID` gezet is | `src/content/consent.tsx` |
+| **Cookiebanner (Usercentrics)** alleen op het echte domein, als `USERCENTRICS_ID` gezet is | `src/content/consent.tsx`, via `<SiteHead />` (`src/content/head.tsx`) |
 | Consent-facade voor embeds (Calendly, YouTube, kaarten): laadt pas met toestemming voor die dienst | `src/content/ConsentEmbed.tsx` |
 
 ## Per site
@@ -42,10 +42,13 @@ Usercentrics.
    banner laadt alleen als ook `SITE_URL` gezet is en het request op dat domein
    binnenkomt. Railway-previews, staging en localhost krijgen niets (geen banner, geen
    tracking). Testen kan dus alleen op het live domein.
-2. **Layout:** `<Usercentrics />` (uit `@/content/consent`) staat in de `<head>` van
-   `src/app/(frontend)/layout.tsx`. Heeft je site een eigen layout, zet hem daar ook in.
-   Komt er later GTM met Consent Mode v2, dan zet je de consent-default (`denied`) in de
-   `<head>` vóór `<Usercentrics />`.
+2. **Layout:** de `<head>` van `src/app/(frontend)/layout.tsx` bevat alleen
+   `<SiteHead />` (uit `@/content/head`). Die rendert `<Usercentrics />`, en later ook
+   Consent Mode v2 (default `denied`, vóór GTM) en GTM. Head-code komt altijd in
+   `SiteHead`, nooit direct in de layout: de layout is site-specifiek.
+   **Bestaande sites:** zet eenmalig `<head><SiteHead /></head>` in de layout van de site
+   (en haal een losse `<Usercentrics />` weg). Vanaf dan komen head-wijzigingen zonder
+   conflict via `fleet sync`.
 3. **Embeds:** voeg elke dienst die je embedt (bv. Calendly, YouTube Video, Google Maps)
    toe in de Usercentrics-configuratie van de klant, en render de embed met
    `ConsentEmbed`. `service` moet gelijk zijn aan de dienstnaam in Usercentrics
