@@ -1,0 +1,222 @@
+# Herbruikbare CI voor elke Payload + Next.js-site (en de template zelf).
+# Sites roepen hem aan vanuit een dunne .github/workflows/ci.yml:
+#   uses: web-bvdo/payload-railway/.github/workflows/payload-ci.yml@ci-v1
+# Een wijziging hier geldt voor alle sites zodra branch ci-v1 hem bevat; geen PR per site.
+# Release: PR naar main (payload-ci-test.yml test de nieuwe versie), daarna
+#   git fetch origin && git checkout ci-v1 && git merge --ff-only origin/main || git merge origin/main
+#   git push origin ci-v1
+#
+# - build-and-smoke: build, migraties, schema-check en smoke tests tegen een echte Postgres.
+# - dependabot-merge: merget Dependabot-PR's (behalve majors) pas als die job groen is.
+# - fleet-merge: merget PR's van het fleet-script (branch fleet/*) pas als die job groen is.
+# - dependabot-alarm: zet een comment op de PR als een Dependabot-update de tests breekt.
+# Werkt zonder branch protection en dus op elk GitHub-abonnement.
+name: payload-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '22'
+      automerge:
+        description: Dependabot- en fleet-PR's mergen bij groen (uit bij het testen van een nieuwe versie)
+        type: boolean
+        default: true
+      caller-workflow:
+        description: Bestandsnaam van de aanroepende workflow, voor de CI-run op main na een merge
+        type: string
+        default: ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    name: build-and-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      DATABASE_URI: postgres://postgres:postgres@localhost:5432/ci
+      PAYLOAD_SECRET: ci-only-not-a-real-secret-0000000000000000
+      PW_SMOKE_OUTPUT: /tmp/pw-smoke
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: CI-variabelen aanvullen uit .env.example
+        # Ontbrekende variabelen uit .env.example aanvullen; wat hierboven staat blijft.
+        # Lege voorbeeldwaarden worden "ci-dummy" (bv. S3), zodat de build er niet over struikelt.
+        shell: bash
+        run: |
+          [ -f .env.example ] || { echo "Geen .env.example; alleen de standaard CI-variabelen."; exit 0; }
+          while IFS= read -r line || [ -n "$line" ]; do
+            line="${line%$'\r'}"
+            [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+            [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+            key="${BASH_REMATCH[2]}"; val="${BASH_REMATCH[3]}"
+            val="${val%%[[:space:]]#*}"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"
+            if [ -z "${!key+x}" ]; then echo "$key=${val:-ci-dummy}" >> "$GITHUB_ENV"; echo "aangevuld: $key"; fi
+          done < .env.example
+
+      - name: Dependencies installeren
+        run: npm ci
+
+      - name: Bekende kwetsbaarheden (informatief)
+        run: |
+          {
+            echo '### npm audit (productie-dependencies)'
+            echo '```'
+            npm audit --omit=dev --audit-level=high 2>&1 | tail -n 60 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Migraties draaien
+        run: npm run migrate
+
+      # Past het schema na alle migraties bij de config? Vangt een veldwijziging zonder
+      # migratie, en een Payload-update (Dependabot) die een schemawijziging vraagt.
+      # Zonder deze stap merget dependabot-merge zo'n update en faalt productie pas bij gebruik.
+      - name: Schema gelijk aan de config
+        run: npm run schema:check
+
+      - name: Gegenereerde bestanden actueel
+        run: |
+          npm run -s generate:types && npm run -s generate:importmap
+          if ! git diff --quiet -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'; then
+            git diff --stat -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
+            echo "::error::payload-types.ts of importMap.js is verouderd. Draai npm run generate:types && npm run generate:importmap en commit."
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Playwright-browser installeren
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npx playwright test -c playwright.smoke.config.ts
+
+      - name: Testresultaten bewaren bij falen
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: smoke-test-results
+          path: /tmp/pw-smoke
+          retention-days: 7
+          if-no-files-found: ignore
+
+  dependabot-merge:
+    name: dependabot-merge
+    needs: build-and-smoke
+    if: inputs.automerge && github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Metadata van de update
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mergen (security-updates, patches en minors)
+        if: steps.meta.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        # "Base branch was modified": een andere PR is net gemerged. Dependabot laten rebasen
+        # → nieuwe CI-run → deze job probeert het opnieuw.
+        # Merges met GITHUB_TOKEN starten geen push-run op main (GitHub-regel); daarom
+        # CI op main hier expliciet starten, anders zegt "CI main" in fleet status niets.
+        run: |
+          if gh pr merge "$PR_URL" --squash --delete-branch; then
+            gh workflow run "${{ inputs.caller-workflow }}" --ref main -R "${{ github.repository }}"
+          else
+            gh pr comment "$PR_URL" --body "@dependabot rebase"
+          fi
+
+      - name: Major-update laten staan voor review
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          DEPS: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          gh pr comment "$PR_URL" --body "Tests zijn groen, maar dit is een **major**-update ($DEPS). Die wordt niet automatisch gemerged: kijk de release notes na en merge handmatig."
+
+  fleet-merge:
+    name: fleet-merge
+    needs: build-and-smoke
+    # Alleen branches uit deze repo (geen fork) en alleen fleet/ — fleet-review/ wacht op een mens.
+    if: >-
+      inputs.automerge && github.event_name == 'pull_request' && startsWith(github.head_ref, 'fleet/')
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Mergen (fleet-PR met groene CI)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        # Een push met GITHUB_TOKEN start geen nieuwe CI-run, dus `gh pr update-branch` als
+        # herkansing bleef hangen zonder checks. Mislukt de merge (conflict), dan blijft de PR
+        # open en zichtbaar in `fleet status`. Na een merge: CI op main expliciet starten.
+        run: |
+          gh pr merge "$PR_URL" --squash --delete-branch
+          gh workflow run "${{ inputs.caller-workflow }}" --ref main
+
+  dependabot-alarm:
+    name: dependabot-alarm
+    needs: build-and-smoke
+    if: failure() && github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Melding op de PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_URL" --body "⚠️ **Deze Dependabot-update breekt de build of de smoke tests** en wordt daarom niet automatisch gemerged. Is het een security-update, dan is de kwetsbaarheid op deze site dus nog niet gepatcht.
+
+          Bekijk de fout: $RUN_URL
+
+          Oplossen kan handmatig, of via de Dependabot-alert in het Security-tabblad met **Assign to Agent**, als je dat abonnement hebt."

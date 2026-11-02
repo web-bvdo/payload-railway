@@ -143,6 +143,27 @@ core-wijziging nog een keer op (de snapshot kende 'm niet). Maak die regels in d
 migratie idempotent (`IF NOT EXISTS`) — daarna is de snapshot weer bij. Conflict in
 `src/migrations/index.ts`? `node scripts/migrations-index.mjs src/migrations` bouwt 'm opnieuw.
 
+## CI wijzigen: één plek voor alle sites
+
+De CI staat niet per site maar centraal in de template: `.github/workflows/payload-ci.yml`
+(een herbruikbare workflow). De `ci.yml` van elke site is een dunne aanroep van
+`web-bvdo/payload-railway/.github/workflows/payload-ci.yml@ci-v1`. Een CI-wijziging is dus geen
+PR per site:
+
+1. PR in de template die `payload-ci.yml` wijzigt. `payload-ci-test.yml` draait de nieuwe versie
+   in die PR (zonder automerge); `ci.yml` draait nog de huidige van `ci-v1`.
+2. Mergen naar `main` (squash).
+3. Release: branch `ci-v1` bijwerken, dan geldt het bij de volgende run op elke site:
+   ```bash
+   git fetch origin && git checkout ci-v1 && git merge origin/main && git push origin ci-v1
+   ```
+   Eerst één site laten draaien (bv. bvdo-dev: Actions → CI → Run workflow) is verstandig.
+
+Een wijziging die sites kan breken (een nieuwe verplichte stap, een andere Node-versie) krijgt
+een nieuwe branch `ci-v2`; sites stappen dan over via `fleet sync` van een nieuwe `ci.yml`.
+`payload-ci.yml` en `payload-ci-test.yml` horen alleen in de template; `fleet sync` zet ze niet
+op een site.
+
 ## ⚠️ NOOIT doen bij een klant-site
 
 Deze twee hebben in de praktijk al bijna data + code gekost:
