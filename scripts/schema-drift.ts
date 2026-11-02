@@ -22,11 +22,25 @@ const { statementsToExecute, warnings } = await pushSchema(
 // Kolom-defaults tellen niet: Payload vult defaultValue zelf in, en een tekstwijziging in een
 // defaultValue (tekst-in-code) zou anders elke keer een migratie eisen.
 const isDefault = (s: string) => /^ALTER TABLE .+ ALTER COLUMN .+ (SET|DROP) DEFAULT\b/i.test(s.trim())
-const missing = (statementsToExecute as string[]).filter((s) => !isDefault(s))
-const defaults = statementsToExecute.length - missing.length
+// Postgres kapt namen af op 63 tekens. Drizzle ziet dan "DROP CONSTRAINT <afgekapt>" +
+// "ADD CONSTRAINT <volledig>" voor dezelfde constraint: geen echt verschil (lange slugs geven dit).
+const NAME_RE = /^ALTER TABLE ("[^"]+") (DROP|ADD) CONSTRAINT "([^"]+)"/i
+const stmts = (statementsToExecute as string[]).map((s) => s.trim())
+const truncatedPair = new Set<string>()
+for (const a of stmts) {
+  const m = a.match(NAME_RE)
+  if (!m || m[2].toUpperCase() !== 'DROP' || m[3].length !== 63) continue
+  const twin = stmts.find((b) => {
+    const n = b.match(NAME_RE)
+    return n && n[1] === m[1] && n[2].toUpperCase() === 'ADD' && n[3].startsWith(m[3])
+  })
+  if (twin) { truncatedPair.add(a); truncatedPair.add(twin) }
+}
+const missing = stmts.filter((s) => !isDefault(s) && !truncatedPair.has(s))
+const defaults = stmts.length - missing.length
 
 if (!missing.length) {
-  console.log(`schema-drift: migraties en config komen overeen ✓${defaults ? ` (${defaults} alleen-default-verschillen genegeerd)` : ''}`)
+  console.log(`schema-drift: migraties en config komen overeen ✓${defaults ? ` (${defaults} verschil(len) in defaults of afgekapte namen genegeerd)` : ''}`)
   process.exit(0)
 }
 console.error(
