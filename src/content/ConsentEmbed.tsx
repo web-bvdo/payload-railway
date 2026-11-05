@@ -101,7 +101,7 @@ export function ConsentEmbed({
           }}
         >
           <p>
-            {children ?? `Deze inhoud wordt geladen via ${service}. Met een klik geef je daar toestemming voor.`}
+            {children ?? `Deze inhoud wordt geladen via ${service}. Met een klik op de knop wordt daar toestemming voor gegeven.`}
           </p>
           <button type="button" onClick={load} data-track={track} style={{ minHeight: 44 }}>
             {buttonLabel}
