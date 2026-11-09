@@ -19,7 +19,7 @@ Leg de keuze per site vast in `CLAUDE.site.md`, zodat agents en collega's weten 
 |---|---|---|
 | Wie moet iets doen | wij; de klant (of wij) zet 3 DNS-records | de IT-beheerder van de klant (Entra ID-app, rechten, secret) |
 | Codewijziging | nee | nee |
-| Onderhoud | geen (API-key verloopt niet) | client secret verloopt (max. 24 maanden), dan stopt mail **stil** |
+| Onderhoud | geen (API-key verloopt niet) | client secret verloopt (portal max. 24 maanden, via CLI langer), dan stopt mail **stil** |
 | Komt in Verzonden items | nee | ja (`saveToSentItems`) |
 | Bijlagen | ja | nog niet (gooit een fout, zie `src/email.ts`) |
 | Kosten | gratis tier volstaat meestal | binnen de M365 van de klant (gedeelde mailbox heeft geen licentie nodig) |
@@ -72,9 +72,25 @@ Stappen voor de **IT-beheerder van de klant**:
    geen redirect-URI.
 3. **API permissions → Add → Microsoft Graph → Application permissions → `Mail.Send`**, dan
    **Grant admin consent**. Let op: *Application*, niet *Delegated*.
-4. **Certificates & secrets → New client secret.** Maximaal 24 maanden geldig. Zet direct een
-   **agenda-herinnering** ruim vóór de vervaldatum: verloopt hij, dan stopt alle mail van de
-   site zonder melding op de site zelf (alleen een fout in de logs).
+4. **Client secret, bij voorkeur lang geldig via de CLI.** Het portal (*Certificates &
+   secrets → New client secret*) maximeert een secret op 24 maanden. Via de CLI kan de
+   beheerder een langere geldigheid zetten, zodat niemand elke 1-2 jaar een secret hoeft te
+   vervangen (tenzij een tenant-beleid voor app-beheer dat begrenst). Aanbevolen:
+   ```bash
+   # Azure CLI (--append laat bestaande secrets staan)
+   az ad app credential reset --id <client-id> --display-name website --years 10 --append
+   ```
+   ```powershell
+   # of Microsoft Graph PowerShell (let op: object-id van de app, niet de client-id)
+   Add-MgApplicationPassword -ApplicationId <object-id> -PasswordCredential @{ displayName = 'website'; endDateTime = (Get-Date).AddYears(10) }
+   ```
+   **Afweging:** langer geldig is minder veilig, en Microsoft adviseert kortere looptijden.
+   Een uitgelekt secret kan zo jarenlang mailen; daarom is stap 5 (de app beperken tot die ene
+   mailbox) hier verplicht. Zet in alle gevallen een **agenda-herinnering** vóór de
+   vervaldatum. Verloopt het secret toch, dan blijft alleen de mail uit (ook de
+   wachtwoord-reset van admins), zonder melding op de site zelf (alleen een fout in de logs).
+   Er gaat niets verloren: slaat de site formulierinzendingen op in de admin (bv.
+   contactaanvragen), dan blijven die daar gewoon staan.
 5. **Beperk de app tot die ene mailbox.** Zonder deze stap mag de app namens élke mailbox in
    de tenant mailen. Via Exchange Online PowerShell:
    ```powershell
