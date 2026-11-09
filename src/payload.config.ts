@@ -9,6 +9,7 @@ import sharp from 'sharp'
 
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
+import { emailAdapter } from './email'
 import { contentGlobals } from './content/globals'
 import { mcpCollections } from './content/mcp'
 import { migrations } from './migrations'
@@ -59,6 +60,8 @@ export default buildConfig({
   collections: [Media, Users].map(withHistory),
   globals: contentGlobals.map((g) => ({ versions: { max: HISTORY }, ...g })),
   editor: lexicalEditor(),
+  // SMTP of Microsoft 365, gekozen via env-vars; zonder → mails alleen in de console. Zie docs/EMAIL.md.
+  email: emailAdapter(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

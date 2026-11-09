@@ -63,6 +63,9 @@ jobs:
       - name: Dependencies installeren
         run: npm ci
 
+      - name: Unit tests
+        run: npm test
+
       - name: Bekende kwetsbaarheden (informatief)
         run: |
           {

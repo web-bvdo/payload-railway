@@ -65,6 +65,7 @@ docs/
   MAINTAINING.md          ← running this across many client sites + template fixes
   SEO.md                  ← SEO per page, noindex/SITE_URL, sitemap, redirects, go-live checklist
   MCP.md                  ← colleagues edit copy via Claude Code (/api/mcp, per-person API keys)
+  EMAIL.md                ← outgoing mail: choose SMTP or Microsoft 365 at go-live (env vars)
 ```
 
 **How content flows:** `src/content/<slug>.ts` (fields) → registered in `globals.ts` →
@@ -84,6 +85,7 @@ docs/
 | `npm run generate:types` | Payload-types opnieuw genereren (na content-wijziging) |
 | `npm run generate:importmap` | admin import-map herbouwen (na UI-plugin-wijziging) |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | unit tests (Node's eigen testrunner, `tests/*.test.mjs`) |
 | `npm run build` / `npm start` | productie-build / -server |
 
 ## Adding a page
@@ -182,6 +184,8 @@ and the go-live checklist: [docs/SEO.md](docs/SEO.md).
   site's work. Template fixes reach sites via `fleet sync` (web-bvdo/fleet) or a single
   `cherry-pick`. See [docs/MAINTAINING.md](docs/MAINTAINING.md).
 - **Image renders empty** → field not filled in `/admin`, or missing `relationTo: 'media'`.
+- **Outgoing mail is a go-live choice:** SMTP or Microsoft 365, picked by env vars in
+  `src/email.ts` ([docs/EMAIL.md](docs/EMAIL.md)). Record the site's choice in `CLAUDE.site.md`.
 
 ## Core vs site-specific (important for updates)
 
@@ -194,7 +198,7 @@ conflicts:
 | `src/content/index.tsx`, `src/content/seo.ts`, `src/content/consent.tsx`, `src/content/ConsentEmbed.tsx`, `src/content/head.tsx` (helpers) | `src/content/<slug>.ts` (your pages' fields) |
 | `src/app/robots.ts`, `src/app/sitemap.ts` | `redirects.json` (old URLs → new, per site) |
 | `scripts/*` | `src/app/(frontend)/**` (routes, layout, CSS) |
-| `src/payload.config.ts`, `next.config.ts`, configs | your Tailwind classes / design |
+| `src/payload.config.ts`, `src/email.ts`, `next.config.ts`, configs | your Tailwind classes / design |
 | `src/collections/*` (unless you extend) | `.env` (never committed) |
 | `docs/*`, `CLAUDE.md` | `src/content/mcp.ts` (collections open for MCP) |
 | | `CLAUDE.site.md` (agent rules for this site, e.g. the SEO requirements) |
