@@ -90,5 +90,7 @@ Usercentrics.
 - [ ] Controle: `curl -sI https://www.klant.nl | grep -i robots`. Dit moet **leeg** zijn. En
       `https://www.klant.nl/sitemap.xml` moet alle pagina's tonen.
 - [ ] Sitemap ingediend in Google Search Console.
+- [ ] E-mailprovider gekozen (SMTP of Microsoft 365) en testmail via het live domein, zie
+      [EMAIL.md](EMAIL.md).
 - [ ] Cookiebanner: `USERCENTRICS_ID` gezet op production en de banner verschijnt op het
       live domein (zie *Cookiebanner* hierboven).

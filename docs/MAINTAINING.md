@@ -198,6 +198,8 @@ Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
 - [ ] **Node-versie** volgens `.nvmrc` (`nvm use`).
 - [ ] **Bij livegang: `SITE_URL`** op production plus redirects van de oude site. Zonder
       `SITE_URL` staat de hele site op noindex. Zie [SEO.md](SEO.md).
+- [ ] **Bij livegang: e-mailprovider** gekozen (SMTP of Microsoft 365), de keuze vastgelegd
+      in `CLAUDE.site.md` en een testmail verstuurd via het live domein. Zie [EMAIL.md](EMAIL.md).
 
 ## Toekomst: core als npm-package
 

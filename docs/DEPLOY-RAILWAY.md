@@ -132,6 +132,7 @@ dus prod krijgt de migratie automatisch.
 | `S3_BUCKET` / `S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | referenties naar de **Bucket**-service (`${{Bucket.…}}`) |
 | `S3_REGION` | `auto` (optioneel; default is `auto`) |
 | `USERCENTRICS_ID` | alleen production: settings-ID van de cookiebanner van de klant (zie [SEO.md](SEO.md#cookiebanner-usercentrics)) |
+| `SMTP_*` óf `MS_*` + `EMAIL_FROM` | alleen production, bij livegang: de e-mailprovider (SMTP of Microsoft 365), zie [EMAIL.md](EMAIL.md) |
 
 ## Media (en waarom database + opslag los staan)
 
