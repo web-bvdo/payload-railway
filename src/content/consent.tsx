@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 
 import { SITE_URL } from './seo'
 
-// Usercentrics-cookiebanner (Browser UI v2). Zet <Usercentrics /> in de <head> van de
+// Usercentrics-cookiebanner (Web CMP v3). Zet <Usercentrics /> in de <head> van de
 // frontend-layout. Laadt alleen als USERCENTRICS_ID gezet is én het request op het live
 // domein (host van SITE_URL) binnenkomt: geen banner/tracking op previews, staging of
 // localhost (eis 9.8, zelfde logica als de noindex in next.config.ts).
@@ -17,7 +17,7 @@ export async function Usercentrics() {
   return (
     <script
       id="usercentrics-cmp"
-      src="https://app.usercentrics.eu/browser-ui/latest/loader.js"
+      src="https://web.cmp.usercentrics.eu/ui/loader.js"
       data-settings-id={id}
       async
     />
