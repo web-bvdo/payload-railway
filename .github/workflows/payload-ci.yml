@@ -87,6 +87,10 @@ jobs:
       - name: Dependencies installeren
         run: npm ci
 
+      # --if-present: sites zonder test-script (nog niet gesynct) falen hier niet op.
+      - name: Unit tests
+        run: npm run --if-present test
+
       - name: Bekende kwetsbaarheden (informatief)
         run: |
           {

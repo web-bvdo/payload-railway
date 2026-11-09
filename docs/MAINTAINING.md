@@ -134,9 +134,11 @@ site-database werken. Regels:
   content-globals — die verschillen per site; een `ALTER TABLE "home"` breekt de deploy.
   Gegenereerde migratie dus met de hand inkorten.
 - **Idempotent**: `ADD COLUMN IF NOT EXISTS`, `DROP COLUMN IF EXISTS`, enz.
-- **Geen `.json`-snapshot meecommitten.** `migrate:create` diff't tegen de nieuwste `.json`
-  in de map; een template-snapshot zou de site laten diffen tegen het schema van de
-  template (alle eigen globals "nieuw").
+- **Wél de `.json`-snapshot meecommitten.** `migrate:create` diff't tegen de nieuwste `.json`
+  in de map. Zonder actuele snapshot in de template genereert een nieuwe site bij zijn eerste
+  `migrate:create` alle core-migraties sinds de vorige snapshot opnieuw. `fleet sync` neemt
+  `.json`-bestanden uit `src/migrations/` nooit over (een template-snapshot kent de eigen globals
+  van een site niet), dus voor bestaande sites is dit veilig. Zie web-bvdo/fleet, README.
 
 **Gevolg per site (eenmalig na zo'n update):** de volgende `npm run migrate:create` neemt de
 core-wijziging nog een keer op (de snapshot kende 'm niet). Maak die regels in de gegenereerde
@@ -217,6 +219,8 @@ Het volledige stappenplan staat in [DEPLOY-RAILWAY.md](DEPLOY-RAILWAY.md) en
 - [ ] **Node-versie** volgens `.nvmrc` (`nvm use`).
 - [ ] **Bij livegang: `SITE_URL`** op production plus redirects van de oude site. Zonder
       `SITE_URL` staat de hele site op noindex. Zie [SEO.md](SEO.md).
+- [ ] **Bij livegang: e-mailprovider** gekozen (SMTP of Microsoft 365), de keuze vastgelegd
+      in `CLAUDE.site.md` en een testmail verstuurd via het live domein. Zie [EMAIL.md](EMAIL.md).
 
 ## Toekomst: core als npm-package
 
