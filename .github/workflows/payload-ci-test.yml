@@ -1,0 +1,21 @@
+# Alleen in de template: test een gewijzigde payload-ci.yml in de PR zelf, vóór de release
+# naar ci-v1. fleet sync zet dit bestand (en payload-ci.yml) nooit op een site.
+name: payload-ci (nieuwe versie)
+
+on:
+  pull_request:
+    paths: ['.github/workflows/payload-ci.yml']
+
+concurrency:
+  group: payload-ci-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/payload-ci.yml
+    with:
+      automerge: false
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write

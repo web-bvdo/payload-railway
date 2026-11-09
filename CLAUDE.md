@@ -199,6 +199,7 @@ conflicts:
 | `src/app/robots.ts`, `src/app/sitemap.ts` | `redirects.json` (old URLs → new, per site) |
 | `scripts/*` | `src/app/(frontend)/**` (routes, layout, CSS) |
 | `src/payload.config.ts`, `src/email.ts`, `next.config.ts`, configs | your Tailwind classes / design |
+| `.github/workflows/ci.yml` (thin call to the template's `payload-ci.yml@ci-v1`; change CI there, see docs/MAINTAINING.md) | |
 | `src/collections/*` (unless you extend) | `.env` (never committed) |
 | `docs/*`, `CLAUDE.md` | `src/content/mcp.ts` (collections open for MCP) |
 | | `CLAUDE.site.md` (agent rules for this site, e.g. the SEO requirements) |
