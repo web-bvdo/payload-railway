@@ -12,6 +12,7 @@ Wat de template regelt, en wat je per site moet doen.
 | 301-redirects van oude URL's | `redirects.json` |
 | Velden voor SEO-titel, -omschrijving en social-afbeelding in de admin, plus een helper voor de metadata | `src/content/seo.ts` |
 | **Cookiebanner (Usercentrics)** alleen op het echte domein, als `USERCENTRICS_ID` gezet is | `src/content/consent.tsx`, via `<SiteHead />` (`src/content/head.tsx`) |
+| **Google Tag Manager + Consent Mode v2** (default `denied`) alleen op het echte domein, als `GTM_ID` gezet is | `src/content/head.tsx` (`<SiteHead />`) |
 | Consent-facade voor embeds (Calendly, YouTube, kaarten): laadt pas met toestemming voor die dienst | `src/content/ConsentEmbed.tsx` |
 
 ## Per site
@@ -43,8 +44,8 @@ Usercentrics.
    binnenkomt. Railway-previews, staging en localhost krijgen niets (geen banner, geen
    tracking). Testen kan dus alleen op het live domein.
 2. **Layout:** de `<head>` van `src/app/(frontend)/layout.tsx` bevat alleen
-   `<SiteHead />` (uit `@/content/head`). Die rendert `<Usercentrics />`, en later ook
-   Consent Mode v2 (default `denied`, vóór GTM) en GTM. Head-code komt altijd in
+   `<SiteHead />` (uit `@/content/head`). Die rendert de Consent Mode v2-default,
+   `<Usercentrics />` en GTM (zie *Google Tag Manager* hieronder). Head-code komt altijd in
    `SiteHead`, nooit direct in de layout: de layout is site-specifiek.
    **Bestaande sites:** zet eenmalig `<head><SiteHead /></head>` in de layout van de site
    (en haal een losse `<Usercentrics />` weg). Vanaf dan komen head-wijzigingen zonder
@@ -72,6 +73,42 @@ Usercentrics.
    `<button onClick={() => window.UC_UI?.showSecondLayer()}>Cookie-instellingen</button>`
    (in een client component), of de privacy-knop van Usercentrics zelf.
 
+## Google Tag Manager + Consent Mode v2
+
+De marketeers regelen tracking (GA4, Ads, Meta, …) in GTM; in de code komen geen losse
+tracking-scripts. De template laadt alleen de GTM-container, met Google Consent Mode v2.
+
+1. **Railway:** zet `GTM_ID=GTM-XXXXXXX` op de **production**-omgeving. Net als de banner
+   laadt GTM alleen als `SITE_URL` gezet is en het request op dat domein binnenkomt; nooit
+   op previews, staging of localhost. Een ongeldig ID (niet `GTM-` + hoofdletters/cijfers)
+   wordt genegeerd.
+2. **Volgorde in `<head>`** (`<SiteHead />`, `src/content/head.tsx`):
+   1. Consent Mode v2-default: `ad_storage`, `ad_user_data`, `ad_personalization` en
+      `analytics_storage` op `denied`, met `wait_for_update: 2000`. Staat erin zodra GTM
+      of Usercentrics aan staat.
+   2. Usercentrics (als `USERCENTRICS_ID` gezet is). Die stuurt na de keuze van de
+      bezoeker (en bij elk bezoek met een bewaarde keuze) `gtag('consent','update',…)`.
+   3. GTM.
+3. **In Usercentrics** (Admin Interface, per klant):
+   - *Configuration → CMP Settings → Google Consent Mode* aan (bij nieuwe accounts staat
+     die al aan) en opslaan. Usercentrics pusht dan zelf de consent-update; de template
+     bouwt daar geen eigen logica voor.
+   - Gebruik voor Google-diensten de standaard-templates (Google Analytics, Google Ads,
+     …), geen eigen (custom) diensten: alleen die zijn gekoppeld aan de consent-types
+     (Analytics → `analytics_storage`, Ads → `ad_storage`, `ad_user_data`,
+     `ad_personalization`).
+   - Laat de *Smart Data Protector* GTM niet blokkeren (of zet hem uit): GTM moet laden,
+     Consent Mode bepaalt wat de tags doen.
+4. **In GTM:**
+   - Gebruik tags met ingebouwde consent-checks (Google-tag/GA4, Google Ads, Floodlight,
+     Conversion Linker): die lezen Consent Mode zelf, daar is geen extra trigger nodig.
+   - Andere tags (Meta, LinkedIn, Hotjar, …): *Admin → Container settings → Enable consent
+     overview* en geef zulke tags bij *Consent settings → Require additional consent* het
+     juiste type (bv. `ad_storage`), of vuur ze op een Usercentrics-event.
+   - Zet de Usercentrics-tag niet ook nog in GTM: de banner laadt al via de code.
+   - Controle (Tag Assistant / preview op het live domein): eerst een `consent default`
+     met alles `denied`, na de keuze een `consent update` die de keuze volgt.
+
 ## Livegang (checklist)
 
 - [ ] Custom domein gekoppeld in Railway.
@@ -94,3 +131,6 @@ Usercentrics.
       [EMAIL.md](EMAIL.md).
 - [ ] Cookiebanner: `USERCENTRICS_ID` gezet op production en de banner verschijnt op het
       live domein (zie *Cookiebanner* hierboven).
+- [ ] GTM: `GTM_ID` gezet op production, Google Consent Mode aan in Usercentrics, en in
+      Tag Assistant een `consent default` (`denied`) gevolgd door een `consent update`
+      (zie *Google Tag Manager* hierboven).
