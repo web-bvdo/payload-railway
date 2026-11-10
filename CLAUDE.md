@@ -209,7 +209,7 @@ conflicts:
 and changes with every template update; `CLAUDE.site.md` is imported below and belongs to the
 site, so both stay conflict-free.
 
-**Head code** (cookiebanner, later GTM/Consent Mode) goes in `<SiteHead />`
+**Head code** (Consent Mode default, cookiebanner, GTM) goes in `<SiteHead />`
 (`src/content/head.tsx`), never directly in the layout: the layout is site-specific, so a
 template change there conflicts on every site.
 
